@@ -1,9 +1,23 @@
 const route = {
-  name: 'view',
-  path: '/sqlorders',
+  name: 'view.sqlorders',
+  path: 'sqlorders',
   component: () => import('./index.vue'),
+  redirect: {name: 'view.sqlorders.list'},
   meta: { title: 'DB工单', keepAlive: true, icon: 'database' },
   children: [
+    {
+      name: 'view.sqlorders.list',
+      path: 'list',
+      component: () => import('./list.vue'),
+      meta: { title: '工单列表', keepAlive: true, icon: 'bars' }
+    },
+    {
+      name: 'view.sqlorders.detail',
+      path: 'detail/:order_id',
+      hidden: true,
+      component: () => import('./detail.vue'),
+      meta: { title: '工单详情', keepAlive: true }
+    },
     {
       name: 'view.sqlorders.commit.ddl',
       path: 'commit/ddl',
@@ -22,19 +36,8 @@ const route = {
       component: () => import('./commit.vue'),
       meta: { title: '提交导出工单', keepAlive: true, icon: 'bars' }
     },
-    {
-      name: 'view.sqlorders.list',
-      path: 'list',
-      component: () => import('./list.vue'),
-      meta: { title: '工单列表', keepAlive: true, icon: 'bars' }
-    },
-    {
-      name: 'view.sqlorders.detail',
-      path: 'detail/:order_id',
-      hidden: true,
-      component: () => import('./detail.vue'),
-      meta: { title: '工单详情', keepAlive: true }
-    }
+    
+
     // {
     //   name: "view.sqlorders.tasks.list",
     //   path: "tasks/list/:taskid",

@@ -1,21 +1,17 @@
 // eslint-disable-next-line
 import { UserLayout, BasicLayout } from '@/layouts'
 import SqlOrders from '@/views/sqlorders/route'
+import Account from '@/views/account/route'
 
 export const asyncRouterMap = [
   {
     path: '/',
     name: 'menu.home',
     component: BasicLayout,
-    redirect: {'name': 'account'},
+    meta: { title: '首页' },
+    redirect: {name: 'account'},
     children: [
-      // account
-      {
-        path: 'account',
-        component: () => import('@/views/account/settings/BaseSetting'),
-        name: 'account',
-        meta: { title: '个人页', icon: 'user', keepAlive: true }
-      },
+      Account,
       SqlOrders,
     ]
   },
