@@ -3,7 +3,7 @@ import json
 from uuid import uuid4
 
 from rest_framework import status
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, UpdateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
@@ -11,7 +11,7 @@ from libs.response import JsonResponseV1
 from users import serializers, models
 
 
-class LoginView(APIView):
+class Login(APIView):
     """登录"""
     permission_classes = [AllowAny]
     serializer_class = serializers.LoginSerializer
@@ -27,7 +27,7 @@ class LoginView(APIView):
         return JsonResponseV1(serializer.errors, code='0001')
 
 
-class LogoutView(APIView):
+class Logout(APIView):
     """退出登录"""
 
     def post(self, request, *args, **kwargs):
@@ -38,7 +38,7 @@ class LogoutView(APIView):
         return JsonResponseV1(status=status.HTTP_200_OK)
 
 
-class UserInfoView(APIView):
+class UserInfo(APIView):
     """获取登录用户信息"""
 
     def get(self, request):
@@ -46,12 +46,40 @@ class UserInfoView(APIView):
         return JsonResponseV1(data=user.data)
 
 
-class GetUsersView(ListAPIView):
+class GetUsers(ListAPIView):
     queryset = models.UserAccounts.objects.all()
     serializer_class = serializers.UsersListSerializer
 
     # 获取审核、复核、抄送的用户列表
-    def get(self, request,  *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return JsonResponseV1(data=serializer.data)
+
+
+class UpdateUserInfo(UpdateAPIView):
+    """更新用户信息"""
+
+    def put(self, request, *args, **kwargs):
+        serializer = serializers.UpdateUserInfoSerializer(
+            instance=models.UserAccounts.objects.get(username=kwargs['username']),
+            data=request.data
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponseV1(message="更新成功")
+        return JsonResponseV1(code='0001', message=serializer.errors)
+
+
+class ChangePassword(APIView):
+    """修改密码"""
+
+    def post(self, request):
+        serializer = serializers.ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            code, msg = serializer.change(request)
+            if code:
+                return JsonResponseV1(message=msg)
+            return JsonResponseV1(message=msg, code='0001')
+        return JsonResponseV1(message=serializer.errors, code='0001', flat=True)

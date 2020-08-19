@@ -5,8 +5,10 @@ from django.urls import path
 from users import views
 
 urlpatterns = [
-    path('login', views.LoginView.as_view(), name='v1.user_login'),
-    path('logout', views.LogoutView.as_view(), name='v1.user_logout'),
-    path('info', views.UserInfoView.as_view(), name='v1.user_info'),
-    path('list', views.GetUsersView.as_view(), name='v1.get_users')
+    path('login', views.Login.as_view(), name='v1.users.login'),
+    path('logout', views.Logout.as_view(), name='v1.users.logout'),
+    path('info', views.UserInfo.as_view(), name='v1.users.info'),
+    path('list', views.GetUsers.as_view(), name='v1.users.list'),
+    path('update/<str:username>', views.UpdateUserInfo.as_view(), name='v1.users.update'),
+    path('change/password', views.ChangePassword.as_view(), name='v1.users.change.password'),
 ]
