@@ -11,4 +11,5 @@ urlpatterns = [
     path('list', views.GetUsers.as_view(), name='v1.users.list'),
     path('update/<str:username>', views.UpdateUserInfo.as_view(), name='v1.users.update'),
     path('change/password', views.ChangePassword.as_view(), name='v1.users.change.password'),
+    path('change/avatar', views.ChangeAvatar.as_view(), name='v1.users.change.avatar'),
 ]

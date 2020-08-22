@@ -134,19 +134,6 @@ export default {
           return false
         }
       })
-
-      // const data = {
-      //   id: this.orderDetail.id,
-      //   reset: this.resetAuditStatus,
-      //   ...this.ruleForm
-      // }
-      // HookSqlOrders(data).then(response => {
-      //   if (response.code === '0000') {
-      //     this.$router.push(`/dbms/sql-orders/list`)
-      //   } else {
-      //     this.$message.error(response.message)
-      //   }
-      // })
     }
   }
 }

@@ -2,6 +2,7 @@
 import json
 from uuid import uuid4
 
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from rest_framework import status
 from rest_framework.generics import ListAPIView, UpdateAPIView
 from rest_framework.permissions import AllowAny
@@ -83,3 +84,14 @@ class ChangePassword(APIView):
                 return JsonResponseV1(message=msg)
             return JsonResponseV1(message=msg, code='0001')
         return JsonResponseV1(message=serializer.errors, code='0001', flat=True)
+
+
+class ChangeAvatar(APIView):
+    """修改头像"""
+
+    def post(self, request):
+        photo_instance = models.UserAccounts.objects.get(uid=request.user.uid)
+        fileobj = request.FILES.get('avatar_file')
+        photo_instance.avatar_file = fileobj
+        photo_instance.save()
+        return JsonResponseV1(message="上传成功")

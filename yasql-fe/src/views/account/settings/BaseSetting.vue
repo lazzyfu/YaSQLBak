@@ -77,7 +77,7 @@ export default {
         ]
       },
       option: {
-        img: '/avatar2.jpg',
+        img: this.$store.getters.userInfo.avatar_file,
         info: true,
         size: 1,
         outputType: 'jpeg',
