@@ -68,7 +68,6 @@ const user = {
               resolve(response)
             })
             .catch(error => {
-              console.log('error1: ', error)
               const errors = [401, 403]
               if (!error || !error.response || errors.includes(error.response.status)) {
                 commit('SET_NAME', { name: 'None', welcome: welcome() })
