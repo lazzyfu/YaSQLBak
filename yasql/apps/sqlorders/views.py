@@ -2,16 +2,14 @@
 # edit by fuzongfei
 import datetime
 
-from django.shortcuts import render
-
 # Create your views here.
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.generics import ListAPIView, GenericAPIView
-from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
+from libs import permissions
 from libs.Pagination import Pagination
 from libs.RenderColumns import render_dynamic_columns
 from libs.response import JsonResponseV1
@@ -62,6 +60,7 @@ class SqlOrdersCommit(GenericAPIView):
 
 
 class SqlOrdersList(ListAPIView):
+    permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrders.objects.all()
     serializer_class = serializers.SqlOrdersListSerializer
     pagination_class = Pagination
@@ -93,6 +92,7 @@ class SqlOrdersList(ListAPIView):
 
 class SqlOrdersDetail(ListAPIView):
     """SQL工单详情"""
+    permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrders.objects.all()
     serializer_class = serializers.SqlOrderDetailSerializer
     lookup_field = 'order_id'
