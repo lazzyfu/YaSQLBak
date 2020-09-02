@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 # edit by fuzongfei
 import json
+import re
 import uuid
 from datetime import datetime
 
@@ -9,7 +10,9 @@ from django.db.models import F
 from rest_framework import serializers
 
 from sqlorders import models, utils, libs
+from sqlorders.api.goInceptionApi import InceptionApi
 from users.models import UserAccounts
+from yasql.config import REOMOTE_USER
 
 
 class ReleaseVersionsSerializer(serializers.ModelSerializer):
@@ -47,6 +50,59 @@ class DbSchemasSerializer(serializers.Serializer):
                    comment=F('cid__comment')
                    ).values('id', 'cid', 'host', 'port', 'schema', 'comment')
         return queryset
+
+
+class IncepSyntaxCheckSerializer(serializers.Serializer):
+    rds_category = serializers.ChoiceField(choices=utils.rdsCategory,
+                                           error_messages={
+                                               'required': '请先选择左侧的【DB类别】',
+                                               'blank': '请先选择左侧的【DB类别】'
+                                           })
+    database = serializers.CharField(
+        error_messages={
+            'required': '请先选择左侧的【环境】和【库名】',
+            'blank': '请先选择左侧的【环境】和【库名】'
+        }
+    )
+    sqls = serializers.CharField(error_messages={
+        'required': '审核内容不能为空',
+        'blank': '审核内容不能为空'
+    })
+    sql_type = serializers.ChoiceField(choices=utils.sqlTypeChoice)
+
+    def validate(self, attrs):
+        # ddl工单提交ddl语句，dml工单提交dml语句
+        status, msg = libs.verify_sql_type(sqls=attrs['sqls'], sql_type=attrs['sql_type'])
+        if not status:
+            raise serializers.ValidationError(msg)
+
+        # TiDB的ALTER语句需要单独的处理
+        if attrs['rds_category'] == 2:
+            if attrs['sql_type'] == 'DDL':
+                sc = re.compile(r'^ALTER([\s\S]+)([,])(\s+)(ADD|CHANGE|RENAME|MODIFY|DROP|CONVERT)([\s\S]+)', re.I)
+                for sql in sqlparse.split(attrs['sqls']):
+                    try:
+                        m = sc.match(sql)
+                        if m.groups():
+                            raise serializers.ValidationError('TiDB下的同一个表的多个操作，请拆分成多个ALTER语句')
+                    except AttributeError:
+                        pass
+        return super(IncepSyntaxCheckSerializer, self).validate(attrs)
+
+    def check(self):
+        vdata = self.validated_data
+        cid, database = vdata['database'].split('__')
+        obj = models.DbConfig.objects.get(pk=cid)
+        cfg = {
+            'host': obj.host,
+            'port': obj.port,
+            'database': database
+        }
+        cfg.update(REOMOTE_USER)
+        api = InceptionApi(cfg=cfg, sqls=vdata['sqls'], rds_category=vdata['rds_category'])
+        context = api.run_check()
+        status = api.is_check_pass()
+        return status, context
 
 
 class SqlOrdersCommitSerializer(serializers.ModelSerializer):
@@ -99,17 +155,29 @@ class SqlOrdersCommitSerializer(serializers.ModelSerializer):
         if not status:
             raise serializers.ValidationError(msg)
 
-        # # 当语法未检查通过时，拦截提交
-        # cid, database = attrs['database'].split('__')
-        # obj = models.DbConfig.objects.get(pk=cid)
-        # cfg = {
-        #     'host': obj.host,
-        #     'port': obj.port,
-        #     'database': database
-        # }
-        # cfg.update(get_sqlorder_user())
-        # if not InceptionApi(cfg=cfg, sqls=attrs['contents']).is_check_pass():
-        #     raise serializers.ValidationError('SQL语法存在异常，提交失败，请先检查SQL语法，请点击：[语法检查]')
+        # 当语法未检查通过时，拦截提交
+        cid, database = attrs['database'].split('__')
+        obj = models.DbConfig.objects.get(pk=cid)
+        cfg = {
+            'host': obj.host,
+            'port': obj.port,
+            'database': database
+        }
+        cfg.update(REOMOTE_USER)
+        if not InceptionApi(cfg=cfg, sqls=attrs['contents'], rds_category=attrs['rds_category']).is_check_pass():
+            raise serializers.ValidationError('SQL语法存在异常，提交失败，请先检查SQL语法，请点击：[语法检查]')
+
+        # TiDB的ALTER语句需要单独的处理
+        if attrs['rds_category'] == 2:
+            if attrs['sql_type'] == 'DDL':
+                sc = re.compile(r'^ALTER([\s\S]+)([,])(\s+)(ADD|CHANGE|RENAME|MODIFY|DROP|CONVERT)([\s\S]+)', re.I)
+                for sql in sqlparse.split(attrs['contents']):
+                    try:
+                        m = sc.match(sql)
+                        if m.groups():
+                            raise serializers.ValidationError('TiDB下的同一个表的多个操作，请拆分成多个ALTER语句')
+                    except AttributeError:
+                        pass
 
         # 提交工单
         request = self.context['request']
@@ -123,6 +191,7 @@ class SqlOrdersCommitSerializer(serializers.ModelSerializer):
         attrs['title'] = attrs['title'] + '_[' + datetime.now().strftime("%Y%m%d%H%M%S") + ']'
         attrs['order_id'] = ''.join(str(uuid.uuid4()).split('-'))  # 基于UUID生成工单id
         attrs['cid_id'], attrs['database'] = attrs['database'].split('__')
+        attrs["department"] = request.user
 
         return super(SqlOrdersCommitSerializer, self).validate(attrs)
 
@@ -142,16 +211,15 @@ class SqlOrdersListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.DbOrders
-        fields = ['id', 'title', 'progress', 'remark', 'env_name', 'window_time', 'sql_type', 'file_format',
+        fields = ['id', 'title', 'progress', 'remark', 'env_name', 'sql_type', 'file_format', 'department', 'is_hide',
                   'applicant', 'order_id', 'auditor', 'reviewer', 'version', 'cid', 'host', 'port', 'database',
                   'created_at']
 
     def get_applicant(self, obj):
         try:
-            display_name = UserAccounts.objects.get(username=obj.applicant).displayname
+            obj.applicant = UserAccounts.objects.get(username=obj.applicant).displayname
         except UserAccounts.DoesNotExist:
-            display_name = 'None'
-        obj.applicant = ''.join([obj.applicant, '[' + display_name + ']'])
+            pass
         return obj.applicant
 
     def get_auditor(self, obj):
@@ -160,7 +228,7 @@ class SqlOrdersListSerializer(serializers.ModelSerializer):
             try:
                 row['display_name'] = UserAccounts.objects.get(username=row['user']).displayname
             except UserAccounts.DoesNotExist:
-                row['display_name'] = 'None'
+                pass
         return json.dumps(data)
 
     def get_reviewer(self, obj):
@@ -169,7 +237,7 @@ class SqlOrdersListSerializer(serializers.ModelSerializer):
             try:
                 row['display_name'] = UserAccounts.objects.get(username=row['user']).displayname
             except UserAccounts.DoesNotExist:
-                row['display_name'] = 'None'
+                pass
         return json.dumps(data)
 
     def get_progress(self, obj):

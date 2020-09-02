@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 # edit by fuzongfei
-
+import humanfriendly as humanfriendly
 from django.db import models
 
 # Create your models here.
@@ -114,9 +114,8 @@ class DbOrders(models.Model):
     title = models.CharField(max_length=64, null=False, verbose_name=u'工单标题')
     order_id = models.CharField(max_length=128, null=False, blank=True, default='', verbose_name=u'工单号')
     demand = models.CharField(max_length=256, null=False, blank=True, verbose_name=u'需求描述')
+    is_hide = models.CharField(max_length=10, null=False, blank=True, default='OFF', verbose_name=u'是否隐藏')
     remark = models.CharField(max_length=16, choices=utils.orderRemark, verbose_name=u'工单备注')
-    immediate_execute_reason = models.CharField(max_length=128, null=False, blank=True, verbose_name='立即执行的原因')
-    window_time = models.CharField(max_length=32, null=False, blank=True, verbose_name=u'执行的时间窗口')
     rds_category = models.SmallIntegerField(choices=utils.rdsCategory, default=1, verbose_name=u'数据库类别')
     sql_type = models.CharField(max_length=30, null=False, default='DML', choices=utils.sqlTypeChoice,
                                 verbose_name=u'工单类型')
@@ -124,11 +123,12 @@ class DbOrders(models.Model):
                                    verbose_name=u'导出工单的文件格式')
     env = models.ForeignKey(DbEnvironment, blank=True, null=True, on_delete=models.SET_NULL, verbose_name='环境')
     applicant = models.CharField(max_length=30, null=False, verbose_name=u'工单申请人')
+    department = models.CharField(max_length=128, null=False, blank=True, verbose_name=u'申请人所在的部门')
     auditor = models.CharField(max_length=512, null=False, verbose_name=u'工单审核人')
     executor = models.CharField(max_length=512, null=True, blank=True, verbose_name=u'工单执行人')
     closer = models.CharField(max_length=512, null=True, blank=True, verbose_name=u'工单关闭人')
     reviewer = models.CharField(max_length=512, null=False, verbose_name=u'工单复核人')
-    email_cc = models.CharField(max_length=2048, null=False, verbose_name=u'抄送人')
+    email_cc = models.CharField(max_length=2048, null=True, blank=True, verbose_name=u'抄送人')
     cid = models.ForeignKey(DbConfig, blank=True, null=True, on_delete=models.SET_NULL)
     database = models.CharField(max_length=32, null=False, verbose_name=u'库名')
     progress = models.SmallIntegerField(default=0, choices=utils.sqlProgressChoice, verbose_name=u'进度')
@@ -184,3 +184,25 @@ class DbOrdersExecuteTasks(models.Model):
         default_permissions = ()
         app_label = 'sqlorders'
         db_table = 'yasql_sqlorders_execute_tasks'
+
+
+class DbExportFiles(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name=u'主键id')
+    task = models.ForeignKey(DbOrdersExecuteTasks, blank=True, null=True, on_delete=models.SET_NULL,
+                             verbose_name=u'关联执行任务的主键id')
+    file_name = models.CharField(max_length=200, default='', unique=True, verbose_name=u'文件名')
+    file_size = models.IntegerField(default=0, verbose_name=u'文件大小，单位B')
+    files = models.FileField(upload_to='export/')
+    encryption_key = models.CharField(max_length=128, default='', verbose_name='加密密钥')
+    content_type = models.CharField(max_length=100, default='', verbose_name=u'文件的类型')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=u'创建时间')
+
+    def size(self):
+        return humanfriendly.format_size(self.file_size, binary=True)
+
+    class Meta:
+        verbose_name = u'DB导出文件'
+        verbose_name_plural = verbose_name
+
+        default_permissions = ()
+        db_table = 'yasql_sqlorders_export_files'

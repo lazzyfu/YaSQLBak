@@ -111,3 +111,4 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.user_secret = uuid4()  # 生成新的secret，让token过期
         user.save()
         return True, '密码修改成功'
+
