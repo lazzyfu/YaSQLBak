@@ -20,15 +20,6 @@
         <a-descriptions-item label="实例">{{ orderDetail.host + ':' + orderDetail.port }}</a-descriptions-item>
         <a-descriptions-item label="创建时间">{{ orderDetail.created_at }}</a-descriptions-item>
         <a-descriptions-item label="备注">{{ orderDetail.remark }}</a-descriptions-item>
-        <a-descriptions-item label="立即执行的原因" v-if="orderDetail.remark === '立即执行'">
-          <a-tooltip>
-            <template slot="title">{{ orderDetail.immediate_execute_reason }}</template>
-            <a href="#">{{ orderDetail.immediate_execute_reason.slice(0, 18) }} ...</a>
-          </a-tooltip>
-        </a-descriptions-item>
-        <a-descriptions-item label="时间窗口" v-if="orderDetail.remark === '窗口执行'">{{
-          orderDetail.window_time
-        }}</a-descriptions-item>
 
         <a-descriptions-item label="需求">{{ orderDetail.demand }}</a-descriptions-item>
       </a-descriptions>
@@ -48,19 +39,27 @@
     <!-- actions -->
     <template v-slot:extra>
       <a-button-group style="margin-right: 4px;">
-        <a-button type="dashed" @click="showModal" :disabled="btnStatus.btnDisabled" icon="retweet">{{
+        <a-button type="dashed" @click="showModal" :disabled="btnStatus.btnDisabled" icon="retweet">
+          {{
           orderDetail.progress | btnTitle
-        }}</a-button>
+          }}
+        </a-button>
 
         <a-button @click="showHookModal" v-if="orderDetail.progress === '已复核'" icon="link">钩子</a-button>
 
-        <a-button type="dashed" @click="showCloseModal" :disabled="btnStatus.closeDisabled" icon="close-circle"
-          >关闭工单</a-button
-        >
+        <a-button
+          type="dashed"
+          @click="showCloseModal"
+          :disabled="btnStatus.closeDisabled"
+          icon="close-circle"
+        >关闭工单</a-button>
 
-        <a-button type="dashed" @click="generateSqlOrdersTasks" :loading="executeLoading" icon="thunderbolt"
-          >执行工单</a-button
-        >
+        <a-button
+          type="dashed"
+          @click="generateSqlOrdersTasks"
+          :loading="executeLoading"
+          icon="thunderbolt"
+        >执行工单</a-button>
 
         <a-button type="dashed" @click="refresh" :loading="loading" icon="sync">刷新</a-button>
       </a-button-group>
@@ -69,9 +68,11 @@
         <a-textarea v-model="confirmMsg" rows="3" :autoSize="{ minRows: 3, maxRows: 5 }" />
         <template slot="footer">
           <a-button key="back" @click="handleCancel">{{ confirmBtnTips.cancelText }}</a-button>
-          <a-button key="submit" type="primary" :loading="loading" @click="handleOk">{{
+          <a-button key="submit" type="primary" :loading="loading" @click="handleOk">
+            {{
             confirmBtnTips.okText
-          }}</a-button>
+            }}
+          </a-button>
         </template>
       </a-modal>
       <!-- close model -->
@@ -90,7 +91,12 @@
           </el-form-item>
 
           <el-form-item label="当前库">
-            <el-input v-model="ruleForm.current_database" readonly placeholder="请输入需求描述" style="width: 95%" />
+            <el-input
+              v-model="ruleForm.current_database"
+              readonly
+              placeholder="请输入需求描述"
+              style="width: 95%"
+            />
           </el-form-item>
 
           <el-form-item label="目标环境">
@@ -156,7 +162,11 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="立即执行的原因" v-if="isShowRemark.immediate" prop="immediate_execute_reason">
+          <el-form-item
+            label="立即执行的原因"
+            v-if="isShowRemark.immediate"
+            prop="immediate_execute_reason"
+          >
             <el-input
               v-model="ruleForm.immediate_execute_reason"
               style="width: 95%"
@@ -265,7 +275,7 @@ import {
   getDbSchemas,
   generateSqlOrdersExecuteTasks,
   HookSqlOrders,
-  getDbEnvironment
+  getDbEnvironment,
 } from '@/api/sql'
 
 import 'codemirror/mode/sql/sql.js'
@@ -277,7 +287,7 @@ const ConfirmBtnTips = { okText: '确认', cancelText: '取消', action: '' }
 const CloseBtnTips = { okText: '提交', cancelText: '关闭', action: 'close' }
 const BtnStatus = {
   btnDisabled: false,
-  closeDisabled: false
+  closeDisabled: false,
 }
 
 export default {
@@ -309,7 +319,7 @@ export default {
         autoRefresh: true,
         lineNumbers: true,
         readOnly: true,
-        focuse: false
+        focuse: false,
       },
       schemas: [],
       sql_envs: [],
@@ -325,7 +335,7 @@ export default {
         database: '',
         remark: '', // 备注
         window_time: '', // 窗口时间
-        immediate_execute_reason: '' // 立即执行的原因
+        immediate_execute_reason: '', // 立即执行的原因
       },
       rules: {
         immediate_execute_reason: [
@@ -334,20 +344,20 @@ export default {
             min: 3,
             max: 128,
             message: '长度在 3 到 128 个字符',
-            trigger: 'blur'
-          }
-        ]
-      }
+            trigger: 'blur',
+          },
+        ],
+      },
     }
   },
   methods: {
     getEnvs() {
-      getDbEnvironment.then(response => {
+      getDbEnvironment.then((response) => {
         this.envs = response.data
       })
     },
     getOrderDetail() {
-      getSqlOrdersDetail(this.$route.params.order_id).then(response => {
+      getSqlOrdersDetail(this.$route.params.order_id).then((response) => {
         this.orderDetail = response.data
       })
     },
@@ -356,9 +366,9 @@ export default {
       this.ruleForm.database = '' //切换环境时，置空已选择的库名
       const params = {
         env_id: value,
-        rds_category: this.orderDetail.rds_category
+        rds_category: this.orderDetail.rds_category,
       }
-      getDbSchemas(params).then(response => {
+      getDbSchemas(params).then((response) => {
         this.schemas = response.data
       })
     },
@@ -383,17 +393,17 @@ export default {
         action: action,
         msg: this.confirmMsg,
         btn: btn,
-        pk: this.orderDetail.id
+        pk: this.orderDetail.id,
       }
       opSqlOrders(commitData)
-        .then(response => {
+        .then((response) => {
           if (response.code === '0000') {
             this.$message.success(response.message)
           } else {
             this.$message.error(JSON.stringify(response.message))
           }
         })
-        .catch(error => {
+        .catch((error) => {
           this.$message.error(error)
         })
         .finally(() => {
@@ -405,14 +415,14 @@ export default {
       this.executeLoading = true
       const data = { id: this.orderDetail.id }
       generateSqlOrdersExecuteTasks(data)
-        .then(response => {
+        .then((response) => {
           if (response.code === '0000') {
             this.$router.push(`/dbms/sql-orders/tasks/list/${response.data}`)
           } else {
             this.$message.error(response.message)
           }
         })
-        .catch(error => {
+        .catch((error) => {
           this.$message.error(error)
         })
         .finally(() => {
@@ -439,7 +449,7 @@ export default {
       this.ruleForm.current_database = this.orderDetail.database
       // 删除当前环境
       this.sql_envs = []
-      this.envs.map(item => {
+      this.envs.map((item) => {
         if (item.name != this.orderDetail.env_id) {
           this.sql_envs.push(item)
         }
@@ -453,9 +463,9 @@ export default {
       const data = {
         id: this.orderDetail.id,
         reset: this.resetAuditStatus,
-        ...this.ruleForm
+        ...this.ruleForm,
       }
-      HookSqlOrders(data).then(response => {
+      HookSqlOrders(data).then((response) => {
         if (response.code === '0000') {
           this.$router.push(`/dbms/sql-orders/list`)
         } else {
@@ -500,7 +510,7 @@ export default {
         this.isShowRemark.window = !this.isShowRemark.online
         this.isShowRemark.immediate = !this.isShowRemark.online
       }
-    }
+    },
   },
   mounted() {
     this.getEnvs()
@@ -534,7 +544,7 @@ export default {
         BtnStatus.closeDisabled = true
         return '完成'
       }
-    }
+    },
   },
   computed: {
     codemirror() {
@@ -558,8 +568,8 @@ export default {
       } else {
         return 6 // currentStatus=6表示已勾住
       }
-    }
-  }
+    },
+  },
 }
 </script>
 
@@ -579,8 +589,6 @@ export default {
 .mobile {
   .detail-layout {
     margin-left: unset;
-  }
-  .text {
   }
   .status-list {
     text-align: left;

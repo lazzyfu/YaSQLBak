@@ -4,8 +4,18 @@
       <a-row>
         <a-col :span="16" :push="8">
           <div style="margin-bottom: 5px">
-            <a-button type="dashed" icon="thunderbolt" style="margin-right: 6px" @click="formatSQL()">格式化</a-button>
-            <a-button type="dashed" icon="safety" style="margin-right: 6px" @click="syntaxCheck()">语法检查</a-button>
+            <a-button
+              type="dashed"
+              icon="thunderbolt"
+              style="margin-right: 6px"
+              @click="formatSQL()"
+            >格式化</a-button>
+            <a-button
+              type="dashed"
+              icon="safety"
+              style="margin-right: 6px"
+              @click="syntaxCheck()"
+            >语法检查</a-button>
           </div>
           <codemirror ref="myCm" v-model="code" :options="cmOptions" @ready="onCmReady"></codemirror>
         </a-col>
@@ -25,36 +35,40 @@
               />
             </el-form-item>
 
+            <el-form-item>
+              <template slot="label">
+                <span stryle="position: relative">
+                  <span>隐藏数据</span>
+                  <el-tooltip placement="right-end" effect="light">
+                    <div slot="content">
+                      <span>
+                        开启后
+                        <br />仅工单的提交人、审核人、复核人和DBA
+                        <br />可以查看工单内容
+                      </span>
+                    </div>
+                    <i class="el-icon-question table-msg" />
+                  </el-tooltip>
+                </span>
+              </template>
+              <a-switch style="margin-bottom:1px" defaultChecked @change="onMyChange" />
+            </el-form-item>
+
             <el-form-item label="版本" v-if="isShow">
               <el-select v-model="ruleForm.version" style="width: 95%" placeholder="请选择上线版本" value>
-                <el-option v-for="item in versions" :key="item.id" :label="item.version" :value="item.id"></el-option>
+                <el-option
+                  v-for="item in versions"
+                  :key="item.id"
+                  :label="item.version"
+                  :value="item.id"
+                ></el-option>
               </el-select>
             </el-form-item>
 
             <el-form-item label="备注" prop="remark">
-              <el-select
-                v-model="ruleForm.remark"
-                style="width: 95%"
-                @change="changeRemark"
-                placeholder="请选择合适的备注"
-                value
-              >
+              <el-select v-model="ruleForm.remark" style="width: 95%" placeholder="请选择合适的备注" value>
                 <el-option v-for="item in remarks" :key="item" :label="item" :value="item"></el-option>
               </el-select>
-            </el-form-item>
-
-            <el-form-item label="时间窗口" v-if="isShowRemark.window" prop="window_time">
-              <el-select v-model="ruleForm.window_time" style="width: 95%" placeholder="请选择" value>
-                <el-option v-for="item in windowTimesList" :key="item" :label="item" :value="item"></el-option>
-              </el-select>
-            </el-form-item>
-
-            <el-form-item label="原因" v-if="isShowRemark.immediate" prop="immediate_execute_reason">
-              <el-input
-                v-model="ruleForm.immediate_execute_reason"
-                style="width: 95%"
-                placeholder="请输入立即执行的原因"
-              />
             </el-form-item>
 
             <el-form-item label="DB类别" prop="rds_category">
@@ -151,7 +165,7 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="抄送人" prop="email_cc">
+            <el-form-item label="抄送人">
               <el-select
                 multiple
                 :multiple-limit="5"
@@ -199,6 +213,33 @@
         </a-table>
       </a-row>
     </a-card>
+    <div>
+      <a-modal v-model="tidbVisible" title="TiDB注意事项" width="55%" @ok="handleTiDBOk">
+        <div style="font-size: 12px">
+          <el-divider content-position="left">DML事务</el-divider>
+          <p>TiDB单条DML语句最大支持的事务为3W, 若是更新（DELETE/UPDATE）超过了3W条记录，需要拆分为多条SQL语句，每条SQL后面加上LIMIT 20000。</p>
+          <h3>例子：</h3>
+          <h4>原始SQL：</h4>
+          <p>UPDATE TEST1 SET NAME='XXX' WHERE I_STATUS = 2;</p>
+
+          <h4>改写为：</h4>
+          <p>UPDATE TEST1 SET NAME='XXX' WHERE I_STATUS = 2 LIMIT 20000;</p>
+          <p>UPDATE TEST1 SET NAME='XXX' WHERE I_STATUS = 2 LIMIT 20000;</p>
+
+          <el-divider content-position="left">DML备份</el-divider>
+          <p>TiDB不支持生成回滚语句、TiDB不支持生成回滚语句、TiDB不支持生成回滚语句</p>
+
+          <el-divider content-position="left">DDL语句</el-divider>
+          <p>TiDB的ALTER语句不支持聚合写法，MODIFY/CHANGE/ADD等需要拆分</p>
+          <h3>例子：</h3>
+          <h4>原始SQL：</h4>
+          <p>ALTER TABLE TEST1 ADD COL1 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX',ADD COL2 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX';</p>
+          <h4>改写为：</h4>
+          <p>ALTER TABLE TEST1 ADD COL1 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX';</p>
+          <p>ALTER TABLE TEST1 ADD COL2 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX';</p>
+        </div>
+      </a-modal>
+    </div>
   </div>
 </template>
 
@@ -210,7 +251,7 @@ import {
   getDbEnvironment,
   getReleaseVersions,
   commitSqlOrders,
-  incepSyntaxCheck
+  incepSyntaxCheck,
 } from '@/api/sql'
 import sqlFormat from 'sql-formatter'
 
@@ -267,6 +308,7 @@ export default {
     return {
       pushing: false,
       visibleAuditResult: false,
+      tidbVisible: false,
       cardTitle: '',
       sqltype: '',
       code: '',
@@ -278,20 +320,18 @@ export default {
       envs: [],
       windowTimesList: SqlTimeList,
       isShow: true,
-      isShowRemark: { immediate: false, window: false, online: false },
       ruleForm: {
         title: '', // 标题
         demand: '', // 需求
         version: '', // 上线版本号
+        is_hide: 'OFF', //是否隐藏数据
         remark: '', // 备注
-        window_time: '', // 窗口时间
-        immediate_execute_reason: '', // 立即执行的原因
         rds_category: 1, // 数据库类别
         env_id: '', // 环境
         database: '', // 库名
         auditor: [], // 审核人
         reviewer: [this.$store.getters.userInfo.username], // 复核人
-        email_cc: [] // 抄送人
+        email_cc: [], // 抄送人
       },
       rules: {
         title: [
@@ -300,8 +340,8 @@ export default {
             min: 3,
             max: 64,
             message: '长度在 3 到 64 个字符',
-            trigger: 'blur'
-          }
+            trigger: 'blur',
+          },
         ],
         demand: [
           { required: true, message: '请输入需求描述', trigger: 'blur' },
@@ -309,20 +349,10 @@ export default {
             min: 3,
             max: 256,
             message: '长度在 3 到 256 个字符',
-            trigger: 'blur'
-          }
+            trigger: 'blur',
+          },
         ],
         remark: [{ required: true, message: '请选择备注', trigger: 'change' }],
-        window_time: [{ required: true, message: '请选择窗口时间', trigger: 'change' }],
-        immediate_execute_reason: [
-          { required: true, message: '请输入立即执行的原因', trigger: 'blur' },
-          {
-            min: 3,
-            max: 128,
-            message: '长度在 3 到 128 个字符',
-            trigger: 'blur'
-          }
-        ],
         rds_category: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
         env_id: [{ required: true, validator: check_rds_category, trigger: 'change' }],
         database: [{ required: true, message: '请选择数据库', trigger: 'change' }],
@@ -330,23 +360,22 @@ export default {
           {
             required: true,
             validator: selectAuditorChecker,
-            trigger: 'change'
-          }
+            trigger: 'change',
+          },
         ],
         reviewer: [
           {
             required: true,
             validator: selectReviewerChecker,
-            trigger: 'change'
-          }
+            trigger: 'change',
+          },
         ],
-        email_cc: [{ required: true, validator: selectCcChecker, trigger: 'change' }]
       },
       // table
       tableLoading: false,
       table: {
         columns: null,
-        data: null
+        data: null,
       },
       // pagination
       pagination: {
@@ -354,7 +383,7 @@ export default {
         pageSize: 10,
         total: 0,
         pageSizeOptions: ['10', '20', '50'],
-        showSizeChanger: true
+        showSizeChanger: true,
       },
       // codemirror
       cmOptions: {
@@ -371,17 +400,23 @@ export default {
         keyMap: 'sublime', // 编辑器模式
         autoCloseBrackets: true,
         autorefresh: true,
-        viewportMargin: Infinity // 解决切换空白的问题
+        viewportMargin: Infinity, // 解决切换空白的问题
       },
       // 审核规则
-      auditRules: ''
+      auditRules: '',
     }
   },
   methods: {
+    onMyChange(checked) {
+      this.ruleForm.is_hide = checked ? 'ON' : 'OFF'
+    },
     getEnvs() {
-      getDbEnvironment.then(response => {
+      getDbEnvironment.then((response) => {
         this.envs = response.data
       })
+    },
+    handleTiDBOk(e) {
+      this.tidbVisible = false
     },
     getsqltype() {
       // 根据url变动，切换工单类型
@@ -398,7 +433,7 @@ export default {
       // DDL工单进行过滤处理，不允许直接提交到生产环境
       this.ruleForm.env_id = ''
       this.ruleForm.database = ''
-      this.envs.map(item => {
+      this.envs.map((item) => {
         item.disabled = false
         if (this.sqltype === 'DDL') {
           if (item.id === 2) {
@@ -424,7 +459,7 @@ export default {
     },
     // 获取上线版本号
     getReleaseVersionsList() {
-      getReleaseVersions.then(response => {
+      getReleaseVersions.then((response) => {
         this.versions = response.data
       })
     },
@@ -440,9 +475,9 @@ export default {
         rds_category: this.ruleForm.rds_category,
         database: this.ruleForm.database,
         sqls: this.codemirror.getValue(),
-        sql_type: this.sqltype
+        sql_type: this.sqltype,
       }
-      incepSyntaxCheck(params).then(response => {
+      incepSyntaxCheck(params).then((response) => {
         if (response.code === '0000') {
           this.visibleAuditResult = true
 
@@ -476,59 +511,48 @@ export default {
         return 'row-error'
       }
     },
-    // 修改备注
-    changeRemark(value) {
-      this.ruleForm.immediate_execute_reason = ''
-      this.ruleForm.window_time = ''
-      if (value === '立即执行') {
-        this.isShowRemark.immediate = true
-        this.isShowRemark.online = !this.isShowRemark.immediate
-        this.isShowRemark.window = !this.isShowRemark.immediate
-      } else if (value === '窗口执行') {
-        this.isShowRemark.window = true
-        this.isShowRemark.online = !this.isShowRemark.window
-        this.isShowRemark.immediate = !this.isShowRemark.window
-      } else if (value === '上线执行') {
-        this.isShowRemark.online = true
-        this.isShowRemark.window = !this.isShowRemark.online
-        this.isShowRemark.immediate = !this.isShowRemark.online
-      }
-    },
     // 变更数据库类型，清空已选择的环境和库名
     changeRdsCategory(value) {
+      if (value === 2) {
+        this.tidbVisible = true
+      }
       this.ruleForm.env_id = ''
       this.ruleForm.database = ''
     },
     // 变更环境，获取schemas
     changeEnvs(value) {
-        console.log('value: ', value);
+      console.log('value: ', value)
       this.ruleForm.database = '' //切换环境时，置空已选择的库名
       const params = {
         env_id: value,
-        rds_category: this.ruleForm.rds_category
+        rds_category: this.ruleForm.rds_category,
       }
-      getDbSchemas(params).then(response => {
+      getDbSchemas(params).then((response) => {
         this.schemas = response.data
       })
     },
     // 获取用户
     getUsersList() {
-      getUsers.then(response => {
+      getUsers.then((response) => {
         this.users = response.data
       })
     },
     // 提交工单
     submitForm(formName) {
       this.pushing = true
-      this.$refs[formName].validate(valid => {
+      this.$refs[formName].validate((valid) => {
         if (valid) {
           const sqlContent = this.codemirror.getValue()
+          if (!sqlContent) {
+            this.$message.error('请输入要审核的SQL内容')
+            return false
+          }
           const commitData = {
             sql_type: this.sqltype,
             contents: sqlContent,
-            ...this.ruleForm
+            ...this.ruleForm,
           }
-          commitSqlOrders(commitData).then(response => {
+          commitSqlOrders(commitData).then((response) => {
             if (response.code === '0000') {
               this.$router.push('/sqlorders/list')
             } else {
@@ -544,7 +568,7 @@ export default {
     resetForm(formName) {
       this.$refs[formName].resetFields()
       this.codemirror.setValue('')
-    }
+    },
   },
   mounted() {
     this.getEnvs()
@@ -555,13 +579,13 @@ export default {
   computed: {
     codemirror() {
       return this.$refs.myCm.codemirror
-    }
+    },
   },
   watch: {
     $route() {
       this.getsqltype()
-    }
-  }
+    },
+  },
 }
 </script>
 

@@ -55,46 +55,68 @@
       :loading="loading"
       @change="handleTableChange"
       size="middle"
-      :scroll="{ x: 1300 }"
+      :scroll="{ x: 1100}"
     >
       <span slot="progress" slot-scope="text">
         <div v-for="tag of progress" :key="tag.value">
-          <el-button size="small" :type="tag.color" v-if="tag.value === text">{{ text }}</el-button>
+          <el-button size="small" round plain :type="tag.color" v-if="tag.value === text">{{text }}</el-button>
+        </div>
+      </span>
+      <span slot="applicant" slot-scope="text, record">
+        <el-tooltip placement="right-end" effect="light">
+          <div slot="content">
+            <span v-if="record.is_hide === 'ON'">
+              仅有查看权限且仅工单的提交人、审核人、复核人和DBA可以查看工单内容
+            </span>
+            <span v-else>
+              有查看权限的用户可以查看当前工单内容
+            </span>
+          </div>
+          <i class="el-icon-lock table-msg" v-if="record.is_hide === 'ON'" style="color: #52c41a" />
+          <i class="el-icon-lock table-msg" v-else />
+        </el-tooltip>
+        {{text}}
+      </span>
+      <span slot="department" slot-scope="text">
+        <div v-for="dept of text.split(',')" :key="dept">
+          <span>{{dept}}</span>
         </div>
       </span>
       <span slot="escape_title" slot-scope="text, record">
-        <router-link :to="{ name: 'view.sqlorders.detail', params: { order_id: record.order_id } }">{{
-          text
-        }}</router-link>
+        <router-link
+          :to="{ name: 'view.sqlorders.detail', params: {order_id: record.order_id}}"
+        >{{text}}</router-link>
         <br />
-        At: {{ record.created_at }}
+        At: {{record.created_at}}
       </span>
-      <span slot="version" slot-scope="text">{{ !text ? '-' : text }}</span>
       <span slot="host" slot-scope="text, record">
-        {{ record.host }}:{{ record.port }}
+        {{record.host}}:{{record.port}}
         <br />
-        {{ record.database }}
+        {{record.database}}
       </span>
-      <span slot="remark" slot-scope="text, record">
-        {{ text }}
-        <br />
-        <span v-if="record.window_time.length > 0">{{ record.window_time }}</span>
-      </span>
-
+      <template slot="version" slot-scope="text">
+        <span v-if="text">
+          <router-link
+            :to="{ name: 'view.dbms.sql-orders.version.detail', params: {version: text}}"
+          >{{text}}</router-link>
+          dasdsa
+        </span>
+        <span v-else>-</span>
+      </template>
       <span slot="auditor" slot-scope="text">
-        <div v-for="tag of JSON.parse(text)" :key="tag.user + tag.status">
-          <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
-            {{ tag.user }}
-            <span v-if="tag.display_name">[{{ tag.display_name }}]</span>
+        <div v-for="tag of JSON.parse(text)" :key="tag.user+tag.status">
+          <span :style="{color: tag.status === 0 ? '#f56c6c': '#67c23a'}">
+            <span v-if="tag.display_name">{{tag.display_name}}</span>
+            <span v-else>{{tag.user}}</span>
           </span>
         </div>
       </span>
 
       <span slot="reviewer" slot-scope="text">
-        <div v-for="tag of JSON.parse(text)" :key="`reviewer_` + tag.user + tag.status">
-          <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
-            {{ tag.user }}
-            <span v-if="tag.display_name">[{{ tag.display_name }}]</span>
+        <div v-for="tag of JSON.parse(text)" :key="`reviewer_`+tag.user+tag.status">
+          <span :style="{color: tag.status === 0 ? '#f56c6c': '#67c23a'}">
+            <span v-if="tag.display_name">{{tag.display_name}}</span>
+            <span v-else>{{tag.user}}</span>
           </span>
         </div>
       </span>

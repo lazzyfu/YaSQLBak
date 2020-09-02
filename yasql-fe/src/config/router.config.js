@@ -1,7 +1,7 @@
 // eslint-disable-next-line
 import { UserLayout, BasicLayout } from '@/layouts'
-import SqlOrders from '@/views/sqlorders/route'
 import Account from '@/views/account/route'
+import SqlOrders from '@/views/sqlorders/route'
 
 export const asyncRouterMap = [
   {
