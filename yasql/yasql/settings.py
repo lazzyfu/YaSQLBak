@@ -13,8 +13,10 @@ import datetime
 import os
 import sys
 
+from kombu import Queue
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-from .config import REDIS, DB
+from config import REDIS, DB
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -45,6 +47,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_celery_results',
+    'django_celery_beat',
+    'channels',
     'users',
     'sqlorders',
 ]
@@ -61,8 +66,8 @@ REST_FRAMEWORK = {
 }
 
 JWT_AUTH = {
-    # 设置token过期时间为1小时
-    'JWT_EXPIRATION_DELTA': datetime.timedelta(seconds=60 * 60),
+    # 设置token过期时间为12小时
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(seconds=12 * 60 * 60),
     'JWT_AUTH_HEADER_PREFIX': 'JWT',
     'JWT_ALLOW_REFRESH': True,
     'JWT_SECRET_KEY': None,
@@ -152,14 +157,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = 'zh-hans'
+TIME_ZONE = 'Asia/Shanghai'
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
@@ -175,3 +176,39 @@ STATICFILES_DIRS = [
 # media文件
 MEDIA_URL = '/api/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Celery Config
+CELERY_BROKER_URL = f"redis://{REDIS['host']}:{REDIS['port']}"
+CELERY_RESULT_BACKEND = f"redis://{REDIS['host']}:{REDIS['port']}"
+CELERY_ACCEPT_CONTENT = ['pickle', 'json', 'msgpack', 'yaml']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_DEFAULT_EXCHANGE_TYPE = 'topic'
+CELERY_TASK_DEFAULT_ROUTING_KEY = 'default'
+
+CELERY_TASK_QUEUES = (
+    # Queue('default', routing_key='default'),  # 默认队列
+    Queue('dbtask', routing_key='dbtask'),  # 数据库工单任务
+)
+
+CELERY_TASK_ROUTES = {
+}
+
+CELERY_ENABLE_UTC = True
+CELERY_TIMEZONE = 'Asia/Shanghai'
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 40
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# django-channels
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(REDIS['host'], REDIS['port'])],
+            "capacity": 1500,  # default 100
+            "expiry": 10,  # default 60
+        },
+    },
+}
+
+ASGI_APPLICATION = "yasql.routing.application"

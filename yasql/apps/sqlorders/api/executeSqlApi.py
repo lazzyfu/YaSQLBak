@@ -8,19 +8,18 @@ import time
 from warnings import filterwarnings
 
 import pymysql
-import sqlparse
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+from config import GH_OST_ARGS
 from sqlorders.api.extractTables import extract_tables
 from sqlorders.api.generateRollbacksql import ReadRemoteBinlog
-from yasql.config import GH_OST_ARGS
 
 filterwarnings('ignore', category=pymysql.Warning)
 channel_layer = get_channel_layer()
 
 
-def pull_msg(taskid=None, msg=None):
+def pull_msg(task_id=None, msg=None):
     """
     msg = {
     'type': 'execute',   // 取值：execute/processlist/ghost
@@ -28,7 +27,7 @@ def pull_msg(taskid=None, msg=None):
     }
     """
     async_to_sync(channel_layer.group_send)(
-        taskid,
+        task_id,
         {
             "type": "user.message",
             'text': msg
@@ -37,14 +36,14 @@ def pull_msg(taskid=None, msg=None):
 
 
 class CheckCnxStatusThread(threading.Thread):
-    def __init__(self, taskid, cnx, watch_thread_id):
+    def __init__(self, task_id, cnx, watch_thread_id):
         """
         监控被执行的SQL，是否被阻塞，有锁信息等
         cnx: 新的mysql连接
         watch_cnx: 被监控的pymysql执行SQL语句时建立的连接
         """
         threading.Thread.__init__(self)
-        self.taskid = taskid
+        self.task_id = task_id
         self.cnx = cnx
         self.watch_thread_id = watch_thread_id
 
@@ -62,7 +61,7 @@ class CheckCnxStatusThread(threading.Thread):
                     # 'COMMAND': 'Sleep', 'TIME': 0, 'STATE': '', 'INFO': None, 'TIME_MS': 44,
                     # 'ROWS_SENT': 0, 'ROWS_EXAMINED': 0}
                     msg = {'type': 'processlist', 'data': processlist_info}
-                    pull_msg(taskid=self.taskid, msg=msg)
+                    pull_msg(task_id=self.task_id, msg=msg)
                 else:
                     self.cnx.close()
                     return False
@@ -73,7 +72,7 @@ class ExecuteSQL(object):
     def __init__(self, config):
         """
         {'host': '127.0.0.1', 'port': 3306, 'charset': 'utf8', 'rds_type': 3, 'database': 'test', rds_category: 1,
-        'user': 'yasql_rw', 'password': '123.com', 'taskid': '1e0695520bb640e2ab9dcb8258aeb937'}
+        'user': 'yops_rw', 'password': '123.com', 'task_id': '1e0695520bb640e2ab9dcb8258aeb937', 'sql_type': 'DML'}
         """
         self.config = config
         self.sql = None
@@ -82,7 +81,8 @@ class ExecuteSQL(object):
         # 新建连接
         cfg = self.config.copy()
         del cfg['rds_type']
-        del cfg['taskid']
+        del cfg['task_id']
+        del cfg['sql_type']
         del cfg['rds_category']
         cfg['cursorclass'] = pymysql.cursors.DictCursor
         # 执行SQL设置为严格模式
@@ -96,18 +96,6 @@ class ExecuteSQL(object):
     def _extract_tables(self):
         """获取sql语句中的表名"""
         return [i.name for i in extract_tables(self.sql)]
-
-    def _parser_sqltype(self):
-        """解析SQL类型，返回是DML还是DDL"""
-        res = sqlparse.parse(self.sql)
-        syntax_type = res[0].token_first().ttype.__str__()
-        if syntax_type == 'Token.Keyword.DDL':
-            return 'DDL'
-        elif syntax_type == 'Token.Keyword.DML':
-            return 'DML'
-        else:
-            # 非DML和DDL语句，比如：use db
-            return None
 
     def _check_is_enabled_binlog(self, cnx):
         """检测mysql是否开启了binlog,若未开启，无法生成备份"""
@@ -143,7 +131,7 @@ class ExecuteSQL(object):
 
     def _get_processlist(self, watch_thread_id):
         """启动获取processlist的线程"""
-        t_cnx = CheckCnxStatusThread(self.config['taskid'], self._cnx(), watch_thread_id)
+        t_cnx = CheckCnxStatusThread(self.config['task_id'], self._cnx(), watch_thread_id)
         t_cnx.setDaemon(True)
         t_cnx.start()
 
@@ -172,12 +160,12 @@ class ExecuteSQL(object):
         # 根据影响行数判断是否进行备份
         if affected_rows == 0:
             msg = {'type': 'execute', 'data': '当前SQL影响行数为0，无可备份的数据'}
-            pull_msg(taskid=self.config['taskid'], msg=msg)
+            pull_msg(task_id=self.config['task_id'], msg=msg)
             return result
         if 0 < affected_rows < 100000:
             # 获取回滚的SQL
             msg = {'type': 'execute', 'data': '正在执行当前SQL的备份，这可能需要花费些时间...'}
-            pull_msg(taskid=self.config['taskid'], msg=msg)
+            pull_msg(task_id=self.config['task_id'], msg=msg)
             # 备份时，传入schema和tables的列表
             # 只读取指定schema和tables的binlog
             rb_schemas = self.config['database']
@@ -199,20 +187,20 @@ class ExecuteSQL(object):
             if rb_data['status'] == 'success':
                 result['rollbacksql'] = '\n\n'.join(rb_data['data'])
                 msg = {'type': 'execute', 'data': '备份成功，请点击结果按钮查看回滚SQL语句.'}
-                pull_msg(taskid=self.config['taskid'], msg=msg)
+                pull_msg(task_id=self.config['task_id'], msg=msg)
                 return result
 
             # 执行失败
             result['status'] = 'fail'
             result['execute_log'] = rb_data['msg']
             msg = {'type': 'execute', 'data': '备份失败, 失败原因：{rb_data["msg"]}\n'}
-            pull_msg(taskid=self.config['taskid'], msg=msg)
+            pull_msg(task_id=self.config['task_id'], msg=msg)
             return result
         if affected_rows > 100000:
             result['status'] = 'fail'
             result['execute_log'] = '更新超过10W行，不进行备份'
             msg = {'type': 'execute', 'data': '更新超过10W行，不进行备份'}
-            pull_msg(taskid=self.config['taskid'], msg=msg)
+            pull_msg(task_id=self.config['task_id'], msg=msg)
             return result
 
     def _op_mysql_dml(self, cnx):
@@ -299,14 +287,14 @@ class ExecuteSQL(object):
                 if data:
                     execute_log += data
                     msg = {'type': 'ghost', 'data': data}
-                    pull_msg(taskid=self.config['taskid'], msg=msg)
+                    pull_msg(task_id=self.config['task_id'], msg=msg)
 
             # 当进程退出时，读取剩余的输出
             if p.stdout:
                 data = p.stdout.read().decode('utf8')
                 execute_log += data
                 msg = {'type': 'ghost', 'data': data}
-                pull_msg(taskid=self.config['taskid'], msg=msg)
+                pull_msg(task_id=self.config['task_id'], msg=msg)
 
             # 计算耗时
             end_time = time.time()
@@ -322,7 +310,7 @@ class ExecuteSQL(object):
         # 未匹配规则
         data = f"未成功匹配到SQL：{self.sql}，请检查语法是否存在问题"
         msg = {'type': 'ghost', 'data': data}
-        pull_msg(taskid=self.config['taskid'], msg=msg)
+        pull_msg(task_id=self.config['task_id'], msg=msg)
         return {'status': 'fail', 'execute_log': data}
 
     def _op_mysql_ddl(self, cnx):
@@ -335,7 +323,6 @@ class ExecuteSQL(object):
             r'TRUNCATE\s+TABLE'
             r')([\s\S]*)',
             re.I)
-
         if othercompile.match(self.sql) is not None:
             # 启动监控线程，监控被执行的SQL当前的会话状态
             self._get_processlist(cnx.thread_id())
@@ -419,25 +406,24 @@ class ExecuteSQL(object):
                     execute_log = f"状态: Fail\n" \
                                   f"错误信息：{', '.join(result)}\n"
                     msg = {'type': 'execute', 'data': execute_log}
-                    pull_msg(taskid=self.config['taskid'], msg=msg)
+                    pull_msg(task_id=self.config['task_id'], msg=msg)
                     result = {'status': 'fail', 'execute_log': execute_log}
                     return result
 
                 if not self.check_read_only(cnx):
                     msg = {'type': 'execute', 'data': '当前READ_ONLY = ON，执行失败，请确认是否连接的是主库'}
-                    pull_msg(taskid=self.config['taskid'], msg=msg)
+                    pull_msg(task_id=self.config['task_id'], msg=msg)
                     result = {'status': 'fail', 'execute_log': '当前READ_ONLY = ON，执行失败，请确认是否连接的是主库'}
                     return result
 
             self.sql = sql
             # 判断传入SQL的类型，为DML还是DDL
-            sql_type = self._parser_sqltype()
-            if sql_type == 'DML':
+            if self.config['sql_type'] == 'DML':
                 if self.config['rds_category'] == 1:
                     result = self._op_mysql_dml(cnx)
                 if self.config['rds_category'] == 2:
                     result = self._op_tidb_dml(cnx)
-            if sql_type == 'DDL':
+            if self.config['sql_type'] == 'DDL':
                 if self.config['rds_category'] == 1:
                     result = self._op_mysql_ddl(cnx)
                 if self.config['rds_category'] == 2:
@@ -445,7 +431,7 @@ class ExecuteSQL(object):
             cnx.close()
         except Exception as err:
             msg = {'type': 'execute', 'data': str(err)}
-            pull_msg(taskid=self.config['taskid'], msg=msg)
+            pull_msg(task_id=self.config['task_id'], msg=msg)
             result = {'status': 'fail', 'execute_log': str(err)}
         finally:
             return result

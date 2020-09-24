@@ -38,7 +38,7 @@ GH_OST_ARGS = ['--allow-on-master',
                '--approve-renamed-columns',
                '--concurrent-rowcount=false',
                '--chunk-size=800',
-               '--hooks-path=/data/www/yops/hook/']
+               '--hooks-path=/data/www/yasql/hook/']
 
 # GoInception
 INCEPTION = {

@@ -1,5 +1,5 @@
 <template>
-  <a-card title="SQL工单">
+  <a-card style='margin: 0px' title="SQL工单" :bordered="false">
     <div class="table-page-search-wrapper">
       <a-form layout="inline" :form="form" @keyup.enter.native="handleSearch">
         <a-row :gutter="[8, 8]">
@@ -97,7 +97,7 @@
       <template slot="version" slot-scope="text">
         <span v-if="text">
           <router-link
-            :to="{ name: 'view.dbms.sql-orders.version.detail', params: {version: text}}"
+            :to="{ name: 'view.sqlorders.version.detail', params: {version: text}}"
           >{{text}}</router-link>
           dasdsa
         </span>
@@ -127,7 +127,7 @@
 <script>
 import moment from 'moment'
 import { getSqlOrdersList, getDbEnvironment } from '@/api/sql'
-import { SqlOrderProgress } from '@/utils/sql'
+import { orderProgress } from '@/utils/sql'
 
 export default {
   data() {
@@ -136,7 +136,7 @@ export default {
       timer: '',
       username: '',
       envs: 0,
-      progress: SqlOrderProgress,
+      progress: orderProgress,
       confirmMsg: '',
       visible: false,
       pagination: {
@@ -252,6 +252,9 @@ export default {
   font-size: 13px;
 }
 .ant-pagination {
+  font-size: 13px;
+}
+.ant-table-pagination.ant-pagination {
   font-size: 13px;
 }
 </style>

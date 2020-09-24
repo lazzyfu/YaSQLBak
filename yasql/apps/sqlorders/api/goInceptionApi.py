@@ -1,8 +1,11 @@
 # -*- coding:utf-8 -*-
 # edit by fuzongfei
+import re
+from operator import itemgetter
+
 import pymysql
 
-from yasql.config import INCEPTION
+from config import INCEPTION
 
 
 class InceptionApi(object):
@@ -17,13 +20,14 @@ class InceptionApi(object):
         self.rds_category = rds_category
         # inception连接串配置
         self.inception_cfg = {
+            'host': INCEPTION['host'],
+            'port': INCEPTION['port'],
             'user': '',
             'password': '',
             'db': '',
             'charset': 'utf8mb4',
             'cursorclass': pymysql.cursors.DictCursor
         }
-        self.inception_cfg.update(INCEPTION)
 
     def set_dynamic_variables(self):
         """
@@ -31,13 +35,12 @@ class InceptionApi(object):
         当选择mysql时，merge_alter_table = true;
         """
         variables_cmd = [
-            'inception set  merge_alter_table = true'
+            'inception set merge_alter_table = true',
         ]
         # 当为tidb时
         if self.rds_category == 2:
             variables_cmd = [
                 'inception set merge_alter_table = false',
-                'inception set max_update_rows = 20000'
             ]
 
         cnx = pymysql.connect(**self.inception_cfg)
@@ -46,6 +49,15 @@ class InceptionApi(object):
             cursor.execute(cmd)
         cursor.close()
         cnx.close()
+
+    def check_cnx(self):
+        """检查inception的连接状态"""
+        try:
+            self.inception_cfg['read_timeout'] = 0.5
+            pymysql.connect(**self.inception_cfg)
+            return True, None
+        except pymysql.err.OperationalError as err:
+            return False, f"不能访问goInception服务，请联系DBA，错误信息: {err}"
 
     def conn_incep(self, magic_sqls=None):
         """
@@ -67,15 +79,24 @@ class InceptionApi(object):
                      f"--host={self.cfg['host']};--port={self.cfg['port']};" \
                      f"--check=1;fingerprint=true;*/" \
                      f"inception_magic_start;" \
-                     f"use {self.cfg['database']};" \
-                     f"{self.sqls};" \
-                     f"inception_magic_commit;"
+                     f"\nuse {self.cfg['database']};" \
+                     f"\n{self.sqls}" \
+                     f"\n;inception_magic_commit;"
         return self.conn_incep(magic_sqls)
+
+    def check_insert_select(self):
+        """检查语句中是否包含insert into ... select 语句"""
+        rs = re.compile(r'insert([\s\S]+)into([\s\S]+)select(.*)', re.I)
+        data = self.run_check()
+        for row in data:
+            # 匹配到，返回False
+            if rs.search(row.get('sql')):
+                return False
+        return True
 
     def is_check_pass(self):
         """判断语法检查是否通过"""
         data = self.run_check()
-        from operator import itemgetter
         keys = ['error_level']
         error_level = [itemgetter(*keys)(row) for row in data]
         if all([i == 0 for i in error_level]):

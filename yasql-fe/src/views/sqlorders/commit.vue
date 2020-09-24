@@ -21,7 +21,7 @@
         </a-col>
         <a-col :span="8" :pull="16">
           <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="100px" size="small">
-            <el-form-item label="标题" prop="title">
+            <el-form-item label="标题" prop="title" key="bindTitle">
               <el-input v-model="ruleForm.title" placeholder="请输入标题" style="width: 95%" />
             </el-form-item>
 
@@ -35,7 +35,7 @@
               />
             </el-form-item>
 
-            <el-form-item>
+            <el-form-item key="bindIsHide">
               <template slot="label">
                 <span stryle="position: relative">
                   <span>隐藏数据</span>
@@ -54,7 +54,7 @@
               <a-switch style="margin-bottom:1px" defaultChecked @change="onMyChange" />
             </el-form-item>
 
-            <el-form-item label="版本" v-if="isShow">
+            <el-form-item label="版本" v-if="isShow" key="bindVersion">
               <el-select v-model="ruleForm.version" style="width: 95%" placeholder="请选择上线版本" value>
                 <el-option
                   v-for="item in versions"
@@ -65,13 +65,13 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="备注" prop="remark">
+            <el-form-item label="备注" prop="remark" key="bindRemark">
               <el-select v-model="ruleForm.remark" style="width: 95%" placeholder="请选择合适的备注" value>
                 <el-option v-for="item in remarks" :key="item" :label="item" :value="item"></el-option>
               </el-select>
             </el-form-item>
 
-            <el-form-item label="DB类别" prop="rds_category">
+            <el-form-item label="DB类别" prop="rds_category" key="bindRdsCategory">
               <el-select
                 v-model="ruleForm.rds_category"
                 style="width: 95%"
@@ -89,7 +89,7 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="环境" prop="env_id">
+            <el-form-item label="环境" prop="env_id" key="bindEnvId">
               <el-select
                 v-model="ruleForm.env_id"
                 style="width: 95%"
@@ -107,7 +107,7 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="库名" prop="database">
+            <el-form-item label="库名" prop="database" key="bindDatabase">
               <el-select
                 v-model="ruleForm.database"
                 style="width: 95%"
@@ -125,7 +125,7 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="审核人" prop="auditor">
+            <el-form-item label="审核人" prop="auditor" key="bindAuditor">
               <el-select
                 multiple
                 :multiple-limit="3"
@@ -145,7 +145,7 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="复核人" prop="reviewer">
+            <el-form-item label="复核人" prop="reviewer" key="bindReviewer">
               <el-select
                 multiple
                 :multiple-limit="3"
@@ -165,7 +165,7 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="抄送人">
+            <el-form-item label="抄送人" key="bindCc">
               <el-select
                 multiple
                 :multiple-limit="5"
@@ -244,7 +244,7 @@
 </template>
 
 <script>
-import { SqlRemark, SqlTimeList, rdsCategory } from '@/utils/sql'
+import { SqlRemark, rdsCategory } from '@/utils/sql'
 import {
   getUsers,
   getDbSchemas,
@@ -288,13 +288,6 @@ export default {
         callback()
       }
     }
-    const selectCcChecker = (rule, value, callback) => {
-      if (value.length < 1) {
-        callback(new Error('请至少选择1个抄送人'))
-      } else {
-        callback()
-      }
-    }
     const check_rds_category = (rule, value, callback) => {
       if (!value) {
         callback(new Error('请选择工单环境'))
@@ -318,7 +311,6 @@ export default {
       versions: [],
       rds_category: rdsCategory,
       envs: [],
-      windowTimesList: SqlTimeList,
       isShow: true,
       ruleForm: {
         title: '', // 标题

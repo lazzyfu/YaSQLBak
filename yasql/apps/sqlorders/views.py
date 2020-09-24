@@ -1,20 +1,23 @@
 # -*- coding:utf-8 -*-
 # edit by fuzongfei
 import datetime
-
 # Create your views here.
+import json
+
+from django.http import Http404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet
 
-from libs import permissions
 from libs.Pagination import Pagination
 from libs.RenderColumns import render_dynamic_columns
 from libs.response import JsonResponseV1
 from sqlorders import models, serializers
-from sqlorders.filters import SqlOrderListFilter
+from sqlorders.filters import SqlOrderListFilter, GetTasksListFilter
 
 
 class GetReleaseVersions(ListAPIView):
@@ -88,7 +91,7 @@ class SqlOrdersCommit(GenericAPIView):
 
 
 class SqlOrdersList(ListAPIView):
-    permission_classes = (permissions.CanViewOrdersPermission,)
+    # permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrders.objects.all()
     serializer_class = serializers.SqlOrdersListSerializer
     pagination_class = Pagination
@@ -121,7 +124,7 @@ class SqlOrdersList(ListAPIView):
 
 class SqlOrdersDetail(ListAPIView):
     """SQL工单详情"""
-    permission_classes = (permissions.CanViewOrdersPermission,)
+    # permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrders.objects.all()
     serializer_class = serializers.SqlOrderDetailSerializer
     lookup_field = 'order_id'
@@ -130,3 +133,215 @@ class SqlOrdersDetail(ListAPIView):
         queryset = self.get_object()
         serializer = self.get_serializer(queryset, context={"request": request})
         return JsonResponseV1(data=serializer.data)
+
+
+class OpSqlOrderView(ViewSet):
+    """更新SQL工单状态，如：审核，关闭等"""
+
+    def get_obj(self, pk):
+        try:
+            obj = models.DbOrders.objects.get(pk=pk)
+            return obj
+        except models.DbOrders.DoesNotExist:
+            raise Http404
+
+    def approve(self, request, pk):
+        serializer = serializers.OpSqlOrderSerializer(instance=self.get_obj(pk),
+                                                      data=request.data,
+                                                      context={"request": request, "handler": "_approve"})
+
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponseV1(data=serializer.data, message="操作成功")
+        return JsonResponseV1(message=serializer.errors, code='0001')
+
+    def feedback(self, request, pk):
+        serializer = serializers.OpSqlOrderSerializer(instance=self.get_obj(pk),
+                                                      data=request.data,
+                                                      context={"request": request, "handler": "_feedback"})
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponseV1(data=serializer.data, message="操作成功")
+        return JsonResponseV1(message=serializer.errors, code='0001')
+
+    def close(self, request, pk):
+        serializer = serializers.OpSqlOrderSerializer(instance=self.get_obj(pk),
+                                                      data=request.data,
+                                                      context={"request": request, "handler": "_close"})
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponseV1(data=serializer.data, message="操作成功")
+        return JsonResponseV1(message=serializer.errors, code='0001')
+
+    def review(self, request, pk):
+        serializer = serializers.OpSqlOrderSerializer(instance=self.get_obj(pk),
+                                                      data=request.data,
+                                                      context={"request": request, "handler": "_review"})
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponseV1(data=serializer.data, message="操作成功")
+        return JsonResponseV1(message=serializer.errors, code='0001')
+
+
+class GenerateTasksView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = serializers.GenerateSqlOrdersTasksSerializer(data=request.data)
+
+        if serializer.is_valid():
+            data = serializer.save(request)
+            return JsonResponseV1(data=data)
+        return JsonResponseV1(message=serializer.errors, code='0001', flat=True)
+
+
+class GetTaskIdView(APIView):
+    def get(self, request, *args, **kwargs):
+        """根据order id返回taskid"""
+        order_id = kwargs.get('order_id')
+        task_id = models.DbOrdersExecuteTasks.objects.filter(order_id=order_id).first().task_id
+        return JsonResponseV1(data=task_id)
+
+
+class GetTasksPreviewView(ListAPIView):
+    queryset = models.DbOrdersExecuteTasks.objects.all()
+    serializer_class = serializers.SqlOrdersTasksListSerializer
+    pagination_class = Pagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filter_class = GetTasksListFilter
+    search_fields = ['sql']
+    ordering = ['created_time']
+
+    def get(self, request, *args, **kwargs):
+        task_id = kwargs.get('task_id')
+        queryset = self.filter_queryset(self.get_queryset().filter(task_id=task_id))
+
+        # 数据隐藏按钮打开了
+        # 仅允许申请人、审核人、复核人和超权用户查看数据
+        obj = models.DbOrders.objects.get(
+            pk=models.DbOrdersExecuteTasks.objects.filter(task_id=task_id).first().order_id
+        )
+        if obj.is_hide == 'ON' and not request.user.is_superuser:
+            allowed_view_users = [obj.applicant]
+            allowed_view_users.extend([x['user'] for x in json.loads(obj.auditor)])
+            allowed_view_users.extend([x['user'] for x in json.loads(obj.reviewer)])
+            if request.user.username not in allowed_view_users:
+                raise PermissionDenied(detail='您没有权限查看该工单的数据，5s后，自动跳转到工单列表页面')
+
+        origin_queryset = self.queryset.filter(task_id=task_id)
+        total = origin_queryset.count()
+        progress_0 = origin_queryset.filter(progress=0).count()
+        progress_1 = origin_queryset.filter(progress=1).count()
+        progress_3 = origin_queryset.filter(progress=3).count()
+
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, context={'request': request}, many=True)
+        render_columns = [
+            {'key': 'num', 'value': '序号'},  # 自定义num，前台显示序号使用
+            {'key': 'applicant', 'value': '申请人'},
+            {'key': 'sql', 'value': 'SQL', 'ellipsis': True, 'width': '50%'},
+            {'key': 'progress', 'value': '进度'},
+            {'key': 'result', 'value': '查看结果'},  # 自定义result
+        ]
+        columns = render_dynamic_columns(render_columns)
+        data = {'columns': columns,
+                'data': {'data': serializer.data,
+                         'total': total,
+                         'progress_0': progress_0,
+                         'progress_1': progress_1,
+                         'progress_3': progress_3}}
+        return self.get_paginated_response(data)
+
+
+class GetTasksListView(ListAPIView):
+    queryset = models.DbOrdersExecuteTasks.objects.all()
+    serializer_class = serializers.SqlOrdersTasksListSerializer
+    pagination_class = Pagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filter_class = GetTasksListFilter
+    search_fields = ['sql']
+    ordering = ['created_time']
+
+    def get(self, request, *args, **kwargs):
+        task_id = kwargs.get('task_id')
+        queryset = self.filter_queryset(self.get_queryset().filter(task_id=task_id))
+
+        # 数据隐藏按钮打开了
+        # 仅允许申请人、审核人、复核人和超权用户查看数据
+        obj = models.DbOrders.objects.get(
+            pk=models.DbOrdersExecuteTasks.objects.filter(task_id=task_id).first().order_id
+        )
+        if obj.is_hide == 'ON' and not request.user.is_superuser:
+            allowed_view_users = [obj.applicant]
+            allowed_view_users.extend([x['user'] for x in json.loads(obj.auditor)])
+            allowed_view_users.extend([x['user'] for x in json.loads(obj.reviewer)])
+            if request.user.username not in allowed_view_users:
+                raise PermissionDenied(detail='您没有权限查看该工单的数据，5s后，自动跳转到工单列表页面')
+
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, context={'request': request}, many=True)
+        render_columns = [
+            {'key': 'num', 'value': '序号'},  # 自定义num，前台显示序号使用
+            {'key': 'applicant', 'value': '申请人'},
+            {'key': 'sql', 'value': 'SQL', 'ellipsis': True, 'width': '50%'},
+            {'key': 'progress', 'value': '进度'},
+            {'key': 'execute', 'value': '执行'},  # 自定义execute
+            {'key': 'result', 'value': '查看结果'},  # 自定义result
+        ]
+        if queryset.exists():
+            if queryset.first().sql_type == 'DDL':
+                render_columns.insert(-1, {'key': 'ghost_pause', 'value': '暂停(gh-ost)'})
+                render_columns.insert(-1, {'key': 'ghost_recovery', 'value': '恢复(gh-ost)'})
+        columns = render_dynamic_columns(render_columns)
+        data = {'columns': columns, 'data': serializer.data}
+        return self.get_paginated_response(data)
+
+
+class ExecuteSingleTaskView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = serializers.ExecuteSingleTaskSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.execute(request)
+            return JsonResponseV1(message="任务提交成功，请查看输出")
+        return JsonResponseV1(message=serializer.errors, code='0001', flat=True)
+
+
+class ExecuteMultiTasksView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = serializers.ExecuteMultiTasksSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.execute(request)
+            return JsonResponseV1(message="任务提交成功，请查看输出")
+        return JsonResponseV1(message=serializer.errors, code='0001', flat=False)
+
+
+class ThrottleTaskView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = serializers.ThrottleTaskSerializer(data=request.data)
+
+        if serializer.is_valid():
+            message = serializer.execute(request)
+            return JsonResponseV1(message=message)
+        return JsonResponseV1(message=serializer.errors, code='0001', flat=True)
+
+
+class GetTasksResultView(ListAPIView):
+    """SQL工单详情"""
+    queryset = models.DbOrdersExecuteTasks.objects.all()
+    serializer_class = serializers.GetTasksResultSerializer
+    lookup_field = 'id'
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_object()
+        serializer = self.get_serializer(queryset, context={"request": request})
+        return JsonResponseV1(data=serializer.data)
+
+
+class HookSqlOrdersView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = serializers.HookSqlOrdersSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponseV1(message="任务提交成功，请查看输出")
+        return JsonResponseV1(message=serializer.errors, code='0001', flat=True)

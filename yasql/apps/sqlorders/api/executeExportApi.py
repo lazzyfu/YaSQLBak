@@ -9,6 +9,7 @@ from decimal import Decimal
 
 import pymysql
 from asgiref.sync import async_to_sync
+from celery.utils.log import get_task_logger
 from channels.layers import get_channel_layer
 from django.core.files import File
 from django.utils import timezone
@@ -16,14 +17,13 @@ from django.utils.crypto import get_random_string
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
-from dbms import models, tasks
-
 channel_layer = get_channel_layer()
+logger = get_task_logger('noahCelery')
 
 
 class PullMsg(object):
-    def __init__(self, taskid):
-        self.taskid = taskid
+    def __init__(self, task_id):
+        self.task_id = task_id
 
     def pull(self, msg=None):
         """
@@ -33,7 +33,7 @@ class PullMsg(object):
         }
         """
         async_to_sync(channel_layer.group_send)(
-            self.taskid,
+            self.task_id,
             {
                 "type": "user.message",
                 'text': {
@@ -48,7 +48,7 @@ class ExecuteExport(object):
     def __init__(self, config):
         """
         {'host': '127.0.0.1', 'port': 3306, 'charset': 'utf8', 'rds_type': 3, 'database': 'test', 'file_format': 'csv',
-        'user': 'yasql_rw', 'password': '123.com', 'taskid': '1e0695520bb640e2ab9dcb8258aeb937'，
+        'user': 'yops_rw', 'password': '123.com', 'task_id': '1e0695520bb640e2ab9dcb8258aeb937'，
         'id': 11, 'username': ''}
         """
         self.config = config
@@ -58,11 +58,11 @@ class ExecuteExport(object):
         self.encoding = 'gbk'
 
         # 实例化消息推送
-        self.pm = PullMsg(self.config['taskid'])
+        self.pm = PullMsg(self.config['task_id'])
 
-        # 文件名, export_file_${taskid}_${time}
-        self.title = int(time.time() * 10000)
-        self.tmp_file = f"export_file_{config['taskid']}_{self.title}.{config['file_format']}"
+        # 文件名, export_file_${task_id}_${time}
+        self.title = str(int(time.time() * 10000))
+        self.tmp_file = f"export_file_{config['task_id']}_{self.title}.{config['file_format']}"
         self.tmp_zip_file = f"{self.tmp_file}.zip"
 
         self.execute_log = []
@@ -78,7 +78,7 @@ class ExecuteExport(object):
         cfg = self.config.copy()
         del cfg['id']
         del cfg['username']
-        del cfg['taskid']
+        del cfg['task_id']
         del cfg['rds_type']
         del cfg['file_format']
         cnx = pymysql.connect(**cfg)
@@ -210,7 +210,7 @@ class ExecuteExport(object):
 
         # 删除临时文件
         for f in [self.tmp_file, self.tmp_zip_file]:
-            msg = f'删除临时文件: {f}'
+            msg = f'删除临时文件: {f} \n'
             self.pm.pull(msg=msg)
             self.execute_log.append(msg)
             if os.path.exists(f):
@@ -218,12 +218,12 @@ class ExecuteExport(object):
 
         # 发送消息
         tasks.sql_order_msg_push.delay(pk=models.DbOrdersExecuteTasks.objects.get(pk=self.config['id']).order_id,
-                                   op='_export',
-                                   username=self.config['username'],
-                                   export_file_name=base64.b64encode(obj.file_name.encode()).decode(),
-                                   export_file_encryption_key=obj.encryption_key,
-                                   export_sql=self.sql
-                                   )
+                                       op='_export',
+                                       username=self.config['username'],
+                                       export_file_name=base64.b64encode(obj.file_name.encode()).decode(),
+                                       export_file_encryption_key=obj.encryption_key,
+                                       export_sql=self.sql
+                                       )
 
     def run(self, sql):
         try:
@@ -244,6 +244,7 @@ class ExecuteExport(object):
             self.pm.pull(msg=msg)
             self.execute_log.append(msg)
         except Exception as err:
+            logger.error(err)
             self.pm.pull(msg=err)
             self.execute_log.append(err)
             self.result['status'] = 'fail'

@@ -16,3 +16,11 @@ class SqlOrderListFilter(django_filters.rest_framework.FilterSet):
     class Meta:
         model = models.DbOrders
         fields = ["username", "progress", "env", "start_created_at", "end_created_at"]
+
+
+class GetTasksListFilter(django_filters.rest_framework.FilterSet):
+    progress = django_filters.NumberFilter(field_name="progress", lookup_expr="iexact")
+
+    class Meta:
+        model = models.DbOrdersExecuteTasks
+        fields = ['progress']

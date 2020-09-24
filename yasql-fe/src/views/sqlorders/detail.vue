@@ -1,273 +1,264 @@
 <template>
-  <page-header-wrapper v-if="orderDetail" :title="orderDetail.title" logo="/logo.png">
-    <template v-slot:content>
-      <a-descriptions size="small" :column="isMobile ? 1 : 2">
-        <a-descriptions-item label="创建人">{{ orderDetail.applicant }}</a-descriptions-item>
-        <a-descriptions-item label="环境">
-          <span v-if="orderDetail.env_id === 'RC环境'">
-            <a-tag color="green">{{ orderDetail.env_id }}-{{ orderDetail.sql_type }}</a-tag>
-          </span>
-          <span v-else-if="orderDetail.env_id === '生产环境'">
-            <a-tag color="red">{{ orderDetail.env_id }}-{{ orderDetail.sql_type }}</a-tag>
-          </span>
-          <span v-else style="color: blue">
-            <a-tag color="cyan">{{ orderDetail.env_id }}-{{ orderDetail.sql_type }}</a-tag>
-          </span>
-        </a-descriptions-item>
-        <a-descriptions-item label="库名">
-          <span style="color: blue">{{ orderDetail.database }}</span>
-        </a-descriptions-item>
-        <a-descriptions-item label="实例">{{ orderDetail.host + ':' + orderDetail.port }}</a-descriptions-item>
-        <a-descriptions-item label="创建时间">{{ orderDetail.created_at }}</a-descriptions-item>
-        <a-descriptions-item label="备注">{{ orderDetail.remark }}</a-descriptions-item>
+  <a-card>
+    <page-header-wrapper v-if="orderDetail" :title="orderDetail.title">
+      <template v-slot:content>
+        <a-descriptions size="small" :column="isMobile ? 1 : 2">
+          <a-descriptions-item label="申请人">{{orderDetail.applicant}}</a-descriptions-item>
+          <a-descriptions-item label="备注">{{orderDetail.remark}}</a-descriptions-item>
+          <a-descriptions-item label="工单环境">
+            <span style="color: red">{{orderDetail.env_id}}</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="工单类型">{{orderDetail.sql_type}}</a-descriptions-item>
+          <a-descriptions-item label="DB类型">{{orderDetail.display_rds_category}}</a-descriptions-item>
+          <a-descriptions-item label="DB实例">{{orderDetail.host+':'+orderDetail.port}}</a-descriptions-item>
+          <a-descriptions-item label="库名">
+            <span style="color: blue">{{orderDetail.database}}</span>
+          </a-descriptions-item>
+          <a-descriptions-item label="创建时间">{{orderDetail.created_at}}</a-descriptions-item>
+          <a-descriptions-item label="需求">{{ orderDetail.demand }}</a-descriptions-item>
+        </a-descriptions>
+      </template>
 
-        <a-descriptions-item label="需求">{{ orderDetail.demand }}</a-descriptions-item>
-      </a-descriptions>
-    </template>
+      <template v-slot:extraContent>
+        <a-row class="status-list">
+          <a-col :xs="24" :sm="24">
+            <div class="text">状态</div>
+            <div class="heading">
+              <h2>{{ orderDetail.progress }}</h2>
+            </div>
+          </a-col>
+        </a-row>
+      </template>
 
-    <template v-slot:extraContent>
-      <a-row class="status-list">
-        <a-col :xs="24" :sm="24">
-          <div class="text">状态</div>
-          <div class="heading">
-            <h2>{{ orderDetail.progress }}</h2>
-          </div>
-        </a-col>
-      </a-row>
-    </template>
-
-    <!-- actions -->
-    <template v-slot:extra>
-      <a-button-group style="margin-right: 4px;">
-        <a-button type="dashed" @click="showModal" :disabled="btnStatus.btnDisabled" icon="retweet">
-          {{
-          orderDetail.progress | btnTitle
-          }}
-        </a-button>
-
-        <a-button @click="showHookModal" v-if="orderDetail.progress === '已复核'" icon="link">钩子</a-button>
-
-        <a-button
-          type="dashed"
-          @click="showCloseModal"
-          :disabled="btnStatus.closeDisabled"
-          icon="close-circle"
-        >关闭工单</a-button>
-
-        <a-button
-          type="dashed"
-          @click="generateSqlOrdersTasks"
-          :loading="executeLoading"
-          icon="thunderbolt"
-        >执行工单</a-button>
-
-        <a-button type="dashed" @click="refresh" :loading="loading" icon="sync">刷新</a-button>
-      </a-button-group>
-      <!-- 其他操作model -->
-      <a-modal title="请输入[可选]" v-model="visible">
-        <a-textarea v-model="confirmMsg" rows="3" :autoSize="{ minRows: 3, maxRows: 5 }" />
-        <template slot="footer">
-          <a-button key="back" @click="handleCancel">{{ confirmBtnTips.cancelText }}</a-button>
-          <a-button key="submit" type="primary" :loading="loading" @click="handleOk">
+      <!-- actions -->
+      <template v-slot:extra>
+        <a-button-group style="margin-right: 4px;">
+          <a-button
+            type="dashed"
+            @click="showModal"
+            :disabled="btnStatus.btnDisabled"
+            icon="retweet"
+          >
             {{
-            confirmBtnTips.okText
+            orderDetail.progress | btnTitle
             }}
           </a-button>
-        </template>
-      </a-modal>
-      <!-- close model -->
-      <a-modal title="请输入[可选]" v-model="closeVisible">
-        <a-textarea v-model="confirmMsg" rows="3" :autoSize="{ minRows: 3, maxRows: 5 }" />
-        <template slot="footer">
-          <a-button key="back" @click="handleCloseCancel">关闭</a-button>
-          <a-button key="submit" type="primary" :loading="loading" @click="handleCloseOk">提交</a-button>
-        </template>
-      </a-modal>
-      <!-- hook model -->
-      <a-modal title="请选择目标环境[钩子]" v-model="hookVisible" width="35%">
-        <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="150px" size="small">
-          <el-form-item label="当前工单">
-            <el-input v-model="ruleForm.title" readonly placeholder="请输入标题" style="width: 95%" />
-          </el-form-item>
 
-          <el-form-item label="当前库">
-            <el-input
-              v-model="ruleForm.current_database"
-              readonly
-              placeholder="请输入需求描述"
-              style="width: 95%"
-            />
-          </el-form-item>
+          <a-button @click="showHookModal" v-if="orderDetail.progress === '已复核'" icon="link">钩子</a-button>
 
-          <el-form-item label="目标环境">
-            <el-select
-              v-model="ruleForm.env_id"
-              style="width: 95%"
-              placeholder="请选择工单环境"
-              @change="changeEnvs"
-              value
-            >
-              <el-option
-                v-for="item in sql_envs"
-                :key="item.id"
-                :label="item.name"
-                :value="item.id"
-                :disabled="item.disabled"
-              ></el-option>
-            </el-select>
-          </el-form-item>
+          <a-button
+            type="dashed"
+            @click="showCloseModal"
+            :disabled="btnStatus.closeDisabled"
+            icon="close-circle"
+          >关闭工单</a-button>
 
-          <el-form-item label="目标库">
-            <el-select
-              v-model="ruleForm.database"
-              style="width: 95%"
-              clearable
-              filterable
-              placeholder="请选择目标数据库"
-              value
-            >
-              <el-option
-                v-for="item in schemas"
-                :key="item.id"
-                :label="`${item.comment}-${item.schema}`"
-                :value="`${item.cid}__${item.schema}`"
-              ></el-option>
-            </el-select>
-          </el-form-item>
+          <a-button
+            type="dashed"
+            @click="generateSqlOrdersTasks"
+            :loading="executeLoading"
+            icon="thunderbolt"
+          >执行工单</a-button>
+          <a-button
+            type="dashed"
+            v-if="['处理中', '已完成', '已复核', '已勾住'].includes(orderDetail.progress)"
+            @click="showTasksDrawer"
+            icon="eye"
+          >子任务详情</a-button>
+          <a-button type="dashed" @click="refresh" :loading="loading" icon="sync">刷新</a-button>
+        </a-button-group>
+        <!-- 其他操作model -->
+        <a-modal title="请输入[可选]" v-model="visible">
+          <a-textarea v-model="confirmMsg" rows="3" :autoSize="{ minRows: 3, maxRows: 5 }" />
+          <template slot="footer">
+            <a-button key="back" @click="handleCancel">{{ confirmBtnTips.cancelText }}</a-button>
+            <a-button key="submit" type="primary" :loading="loading" @click="handleOk">
+              {{
+              confirmBtnTips.okText
+              }}
+            </a-button>
+          </template>
+        </a-modal>
+        <!-- close model -->
+        <a-modal title="请输入[可选]" v-model="closeVisible">
+          <a-textarea v-model="confirmMsg" rows="3" :autoSize="{ minRows: 3, maxRows: 5 }" />
+          <template slot="footer">
+            <a-button key="back" @click="handleCloseCancel">关闭</a-button>
+            <a-button key="submit" type="primary" :loading="loading" @click="handleCloseOk">提交</a-button>
+          </template>
+        </a-modal>
+        <!-- hook model -->
+        <a-modal title="请选择目标环境[钩子]" v-model="hookVisible" width="35%">
+          <el-form :model="ruleForm" ref="ruleForm" label-width="150px" size="small">
+            <el-form-item label="当前工单">
+              <el-input v-model="ruleForm.title" readonly placeholder="请输入标题" style="width: 95%" />
+            </el-form-item>
 
-          <el-form-item label="审核状态">
-            <a-switch
-              checked-children="重置审核状态为：待审批"
-              un-checked-children="继承审核状态为：已批准"
-              default-checked
-              @change="onRestChange"
-            />
-          </el-form-item>
+            <el-form-item label="当前库">
+              <el-input
+                v-model="ruleForm.current_database"
+                readonly
+                placeholder="请输入需求描述"
+                style="width: 95%"
+              />
+            </el-form-item>
 
-          <el-form-item label="备注">
-            <el-select
-              v-model="ruleForm.remark"
-              style="width: 95%"
-              @change="changeRemark"
-              placeholder="请选择合适的备注"
-              value
-            >
-              <el-option v-for="item in remarks" :key="item" :label="item" :value="item"></el-option>
-            </el-select>
-          </el-form-item>
+            <el-form-item label="目标环境">
+              <el-select
+                v-model="ruleForm.env_id"
+                style="width: 95%"
+                placeholder="请选择工单环境"
+                @change="changeEnvs"
+                value
+              >
+                <el-option
+                  v-for="item in sql_envs"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                  :disabled="item.disabled"
+                ></el-option>
+              </el-select>
+            </el-form-item>
 
-          <el-form-item label="时间窗口" v-if="isShowRemark.window">
-            <el-select v-model="ruleForm.window_time" style="width: 95%" placeholder="请选择" value>
-              <el-option v-for="item in windowTimesList" :key="item" :label="item" :value="item"></el-option>
-            </el-select>
-          </el-form-item>
+            <el-form-item label="目标库">
+              <el-select
+                v-model="ruleForm.database"
+                style="width: 95%"
+                clearable
+                filterable
+                placeholder="请选择目标数据库"
+                value
+              >
+                <el-option
+                  v-for="item in schemas"
+                  :key="item.id"
+                  :label="`${item.comment}-${item.schema}`"
+                  :value="`${item.cid}__${item.schema}`"
+                ></el-option>
+              </el-select>
+            </el-form-item>
 
-          <el-form-item
-            label="立即执行的原因"
-            v-if="isShowRemark.immediate"
-            prop="immediate_execute_reason"
+            <el-form-item label="审核状态">
+              <a-switch
+                checked-children="重置审核状态为：待审批"
+                un-checked-children="继承审核状态为：已批准"
+                default-checked
+                @change="onRestChange"
+              />
+            </el-form-item>
+
+            <el-form-item label="备注">
+              <el-select v-model="ruleForm.remark" style="width: 95%" placeholder="请选择合适的备注" value>
+                <el-option v-for="item in remarks" :key="item" :label="item" :value="item"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-form>
+          <template slot="footer">
+            <a-button key="back" @click="handleHookCancel">关闭</a-button>
+            <a-button key="submit" type="primary" :loading="hookLoading" @click="handleHookOk">提交</a-button>
+          </template>
+        </a-modal>
+      </template>
+
+      <a-card style="margin: -5px 0" :bordered="false" title="事件进度">
+        <a-steps :current="currentStatus" size="small">
+          <a-step title="创建工单"></a-step>
+          <a-step title="审核中"></a-step>
+          <a-step title="已审核"></a-step>
+          <a-step title="处理中"></a-step>
+          <a-step title="已完成"></a-step>
+          <a-step title="已复核"></a-step>
+          <a-step title="已勾住"></a-step>
+        </a-steps>
+
+        <a-card type="inner" title="事件状态" style="margin-top: 10px">
+          <a-descriptions
+            size="small"
+            :col="4"
+            v-for="k of JSON.parse(orderDetail.auditor)"
+            :key="`auditor` + k.user + k.status"
           >
-            <el-input
-              v-model="ruleForm.immediate_execute_reason"
-              style="width: 95%"
-              placeholder="请输入立即执行的原因"
-            />
-          </el-form-item>
-        </el-form>
-        <template slot="footer">
-          <a-button key="back" @click="handleHookCancel">关闭</a-button>
-          <a-button key="submit" type="primary" :loading="hookLoading" @click="handleHookOk">提交</a-button>
-        </template>
-      </a-modal>
-    </template>
+            <a-descriptions-item label="审核人">
+              {{ k.user }}
+              <span v-if="k.is_superuser === 1">(超级审核人)</span>
+            </a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <a-tag v-if="k.status === 0" color="red">未审核</a-tag>
+              <a-tag v-else-if="k.status === 1" color="green">已审核</a-tag>
+              <a-tag v-else color="blue">已驳回</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="审核时间">{{ k.time }}</a-descriptions-item>
+            <a-descriptions-item label="附加信息">{{ k.msg }}</a-descriptions-item>
+          </a-descriptions>
 
-    <a-card style="margin: -5px 0" :bordered="false" title="事件进度">
-      <a-steps :current="currentStatus" size="small">
-        <a-step title="创建工单"></a-step>
-        <a-step title="审核中"></a-step>
-        <a-step title="已审核"></a-step>
-        <a-step title="处理中"></a-step>
-        <a-step title="已完成"></a-step>
-        <a-step title="已复核"></a-step>
-        <a-step title="已勾住"></a-step>
-      </a-steps>
-
-      <a-card type="inner" title="事件状态" style="font-size: 13px;margin-top: 10px">
-        <a-descriptions
-          size="small"
-          :col="4"
-          v-for="k of JSON.parse(orderDetail.auditor)"
-          :key="`auditor` + k.user + k.status"
-        >
-          <a-descriptions-item label="审核人">
-            {{ k.user }}
-            <span v-if="k.is_superuser === 1">(超级审核人)</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="状态">
-            <a-tag v-if="k.status === 0" color="red">未审核</a-tag>
-            <a-tag v-else-if="k.status === 1" color="green">已审核</a-tag>
-            <a-tag v-else color="blue">已驳回</a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="审核时间">{{ k.time }}</a-descriptions-item>
-          <a-descriptions-item label="附加信息">{{ k.msg }}</a-descriptions-item>
-        </a-descriptions>
-
-        <a-divider style="margin: 5px" />
-        <a-descriptions
-          size="small"
-          :col="4"
-          v-for="k of JSON.parse(orderDetail.reviewer)"
-          :key="`reviewer` + k.user + k.status"
-        >
-          <a-descriptions-item label="复核人">{{ k.user }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
-            <a-tag v-if="k.status === 0" color="red">未复核</a-tag>
-            <a-tag v-else color="green">已复核</a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="复核时间">{{ k.time }}</a-descriptions-item>
-          <a-descriptions-item label="附加信息">{{ k.msg }}</a-descriptions-item>
-        </a-descriptions>
-
-        <a-divider style="margin: 5px" />
-        <a-descriptions
-          size="small"
-          :col="4"
-          v-for="k of JSON.parse(orderDetail.executor)"
-          :key="`executor` + k.user + k.status"
-        >
-          <a-descriptions-item label="执行人">{{ k.user }}</a-descriptions-item>
-          <a-descriptions-item label="状态">-</a-descriptions-item>
-          <a-descriptions-item label="执行时间">{{ k.time }}</a-descriptions-item>
-          <a-descriptions-item label="附加信息">{{ k.msg }}</a-descriptions-item>
-        </a-descriptions>
-
-        <div v-if="orderDetail.progress === '已关闭'">
           <a-divider style="margin: 5px" />
           <a-descriptions
             size="small"
             :col="4"
-            v-for="k of JSON.parse(orderDetail.closer)"
-            :key="`closer` + k.user + k.status"
+            v-for="k of JSON.parse(orderDetail.reviewer)"
+            :key="`reviewer` + k.user + k.status"
           >
-            <a-descriptions-item label="关闭人">{{ k.user }}</a-descriptions-item>
-            <a-descriptions-item label="状态">-</a-descriptions-item>
-            <a-descriptions-item label="关闭时间">{{ k.time }}</a-descriptions-item>
+            <a-descriptions-item label="复核人">{{ k.user }}</a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <a-tag v-if="k.status === 0" color="red">未复核</a-tag>
+              <a-tag v-else color="green">已复核</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="复核时间">{{ k.time }}</a-descriptions-item>
             <a-descriptions-item label="附加信息">{{ k.msg }}</a-descriptions-item>
           </a-descriptions>
-        </div>
-      </a-card>
-    </a-card>
 
-    <a-card type="inner" title="工单内容" style="font-size: 13px;margin-top: 10px">
-      <codemirror ref="myCm" v-model="code" :options="cmOptions" @ready="onCmReady"></codemirror>
-    </a-card>
-  </page-header-wrapper>
+          <a-divider style="margin: 5px" />
+          <a-descriptions
+            size="small"
+            :col="4"
+            v-for="k of JSON.parse(orderDetail.executor)"
+            :key="`executor` + k.user + k.status"
+          >
+            <a-descriptions-item label="执行人">{{ k.user }}</a-descriptions-item>
+            <a-descriptions-item label="状态">-</a-descriptions-item>
+            <a-descriptions-item label="执行时间">{{ k.time }}</a-descriptions-item>
+            <a-descriptions-item label="附加信息">{{ k.msg }}</a-descriptions-item>
+          </a-descriptions>
+
+          <div v-if="orderDetail.progress === '已关闭'">
+            <a-divider style="margin: 5px" />
+            <a-descriptions
+              size="small"
+              :col="4"
+              v-for="k of JSON.parse(orderDetail.closer)"
+              :key="`closer` + k.user + k.status"
+            >
+              <a-descriptions-item label="关闭人">{{ k.user }}</a-descriptions-item>
+              <a-descriptions-item label="状态">-</a-descriptions-item>
+              <a-descriptions-item label="关闭时间">{{ k.time }}</a-descriptions-item>
+              <a-descriptions-item label="附加信息">{{ k.msg }}</a-descriptions-item>
+            </a-descriptions>
+          </div>
+        </a-card>
+      </a-card>
+
+      <a-card title="工单内容" :bordered="false" style="margin-top: 10px">
+        <codemirror ref="myCm" v-model="code" :options="cmOptions" @ready="onCmReady"></codemirror>
+      </a-card>
+
+      <a-drawer
+        title="子任务执行详情"
+        width="60%"
+        placement="right"
+        :closable="false"
+        :visible="visibleDrawer"
+        @close="onCloseDrawer"
+      >
+        <drawerTasksPreview :order_id="this.orderDetail.id" />
+      </a-drawer>
+    </page-header-wrapper>
+  </a-card>
 </template>
 
 <script>
 import { baseMixin } from '@/store/app-mixin'
-// import { filters } from '@/mixins/index'
-import { SqlRemark, SqlTimeList } from '@/utils/sql'
+import { SqlRemark } from '@/utils/sql'
 
 import {
   getSqlOrdersDetail,
@@ -282,6 +273,8 @@ import 'codemirror/mode/sql/sql.js'
 import 'codemirror/theme/ambiance.css'
 import 'codemirror/addon/display/autorefresh'
 
+import drawerTasksPreview from './preview.vue'
+
 // 模态框按钮
 const ConfirmBtnTips = { okText: '确认', cancelText: '取消', action: '' }
 const CloseBtnTips = { okText: '提交', cancelText: '关闭', action: 'close' }
@@ -292,11 +285,14 @@ const BtnStatus = {
 
 export default {
   name: 'detail',
-  //   mixins: [filters],
   mixins: [baseMixin],
+  components: {
+    drawerTasksPreview,
+  },
   data() {
     return {
       visible: false,
+      visibleDrawer: false,
       closeVisible: false,
       loading: false,
       executeLoading: false,
@@ -325,28 +321,12 @@ export default {
       sql_envs: [],
       resetAuditStatus: 'ON',
       remarks: SqlRemark,
-      windowTimesList: SqlTimeList,
-      isShow: true,
-      isShowRemark: { immediate: false, window: false, online: false },
       ruleForm: {
         title: '',
         current_database: '',
         env_id: '',
         database: '',
         remark: '', // 备注
-        window_time: '', // 窗口时间
-        immediate_execute_reason: '', // 立即执行的原因
-      },
-      rules: {
-        immediate_execute_reason: [
-          { required: true, message: '请输入立即执行的原因', trigger: 'blur' },
-          {
-            min: 3,
-            max: 128,
-            message: '长度在 3 到 128 个字符',
-            trigger: 'blur',
-          },
-        ],
       },
     }
   },
@@ -355,6 +335,12 @@ export default {
       getDbEnvironment.then((response) => {
         this.envs = response.data
       })
+    },
+    showTasksDrawer() {
+      this.visibleDrawer = true
+    },
+    onCloseDrawer() {
+      this.visibleDrawer = false
     },
     getOrderDetail() {
       getSqlOrdersDetail(this.$route.params.order_id).then((response) => {
@@ -417,7 +403,7 @@ export default {
       generateSqlOrdersExecuteTasks(data)
         .then((response) => {
           if (response.code === '0000') {
-            this.$router.push(`/dbms/sql-orders/tasks/list/${response.data}`)
+            this.$router.push(`/sqlorders/tasks/${response.data}`)
           } else {
             this.$message.error(response.message)
           }
@@ -467,7 +453,7 @@ export default {
       }
       HookSqlOrders(data).then((response) => {
         if (response.code === '0000') {
-          this.$router.push(`/dbms/sql-orders/list`)
+          this.$router.push(`/sqlorders/list`)
         } else {
           this.$message.error(response.message)
         }
@@ -492,24 +478,6 @@ export default {
     },
     onRestChange(checked) {
       this.resetAuditStatus = checked ? 'ON' : 'OFF'
-    },
-    // 修改备注
-    changeRemark(value) {
-      this.ruleForm.immediate_execute_reason = ''
-      this.ruleForm.window_time = ''
-      if (value === '立即执行') {
-        this.isShowRemark.immediate = true
-        this.isShowRemark.online = !this.isShowRemark.immediate
-        this.isShowRemark.window = !this.isShowRemark.immediate
-      } else if (value === '窗口执行') {
-        this.isShowRemark.window = true
-        this.isShowRemark.online = !this.isShowRemark.window
-        this.isShowRemark.immediate = !this.isShowRemark.window
-      } else if (value === '上线执行') {
-        this.isShowRemark.online = true
-        this.isShowRemark.window = !this.isShowRemark.online
-        this.isShowRemark.immediate = !this.isShowRemark.online
-      }
     },
   },
   mounted() {

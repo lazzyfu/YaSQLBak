@@ -10,8 +10,7 @@ from sqlorders import utils
 class DbEnvironment(models.Model):
     """
     DB所在的环境，也可以叫做业务线等，可根据自己的业务线理解，此处姑且叫做DB环境
-    比如：测试环境、预发布环境、压测环境、生产环境
-    每个环境均有属于自己环境的N套DB集群
+    比如：测试环境、预发布环境、压测环境、生产环境，每个环境均有N套DB集群
     """
     id = models.AutoField(primary_key=True, verbose_name=u'主键ID')
     name = models.CharField(max_length=128, null=False, unique=True, verbose_name='名称')
@@ -56,7 +55,7 @@ class ReleaseVersions(models.Model):
 
 class DbConfig(models.Model):
     """
-    mysql远程主机配置表
+    mysql远程主机或实例配置表
     """
     id = models.AutoField(primary_key=True, verbose_name=u'主键ID')
     host = models.CharField(max_length=128, null=False, verbose_name=u'数据库地址')
@@ -65,10 +64,8 @@ class DbConfig(models.Model):
                                  default='utf8', verbose_name=u'表字符集')
     env = models.ForeignKey(DbEnvironment, blank=True, null=True, on_delete=models.SET_NULL, verbose_name='环境')
     use_type = models.SmallIntegerField(choices=utils.useTypeChoice, default=0, verbose_name=u'用途')
-    rds_type = models.SmallIntegerField(choices=utils.rdsTypeChoice, default=0, verbose_name=u'数据库的类型')
+    rds_type = models.SmallIntegerField(choices=utils.rdsTypeChoice, default=2, verbose_name=u'数据库的类型')
     rds_category = models.SmallIntegerField(choices=utils.rdsCategory, default=1, verbose_name=u'数据库类别')
-    is_enabled = models.SmallIntegerField(choices=((0, '启用'), (1, '禁用')), default=0,
-                                          verbose_name=u'是否启用')
     comment = models.CharField(max_length=128, null=True, verbose_name=u'主机描述')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=u'创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name=u'更新时间')
@@ -129,7 +126,7 @@ class DbOrders(models.Model):
     closer = models.CharField(max_length=512, null=True, blank=True, verbose_name=u'工单关闭人')
     reviewer = models.CharField(max_length=512, null=False, verbose_name=u'工单复核人')
     email_cc = models.CharField(max_length=2048, null=True, blank=True, verbose_name=u'抄送人')
-    cid = models.ForeignKey(DbConfig, blank=True, null=True, on_delete=models.SET_NULL)
+    cid = models.ForeignKey(DbConfig, blank=True, null=True, on_delete=models.SET_NULL, verbose_name='数据库')
     database = models.CharField(max_length=32, null=False, verbose_name=u'库名')
     progress = models.SmallIntegerField(default=0, choices=utils.sqlProgressChoice, verbose_name=u'进度')
     version = models.ForeignKey('ReleaseVersions', blank=True, null=True, on_delete=models.SET_NULL,
@@ -147,7 +144,7 @@ class DbOrders(models.Model):
 
         default_permissions = ()
         app_label = 'sqlorders'
-        db_table = 'yasql_sqlorders'
+        db_table = 'yasql_dborders'
 
         unique_together = (('order_id',),)
         index_together = (('title',), ('remark',), ('applicant',), ('database',), ('progress',))
@@ -157,12 +154,12 @@ class DbOrdersExecuteTasks(models.Model):
     id = models.AutoField(primary_key=True, verbose_name='主键id')
     order = models.ForeignKey(DbOrders, blank=True, null=True, on_delete=models.SET_NULL, verbose_name='关联工单id')
     applicant = models.CharField(max_length=30, null=True, blank=True, verbose_name=u'工单申请人')
-    taskid = models.CharField(null=False, max_length=128, verbose_name='任务ID')
+    task_id = models.CharField(null=False, max_length=128, verbose_name='任务ID')
     sql_type = models.CharField(max_length=30, null=False, default='DML', choices=utils.sqlTypeChoice,
                                 verbose_name=u'工单类型')
     executor = models.CharField(max_length=30, null=False, default='', verbose_name='工单执行人')
     sql = models.TextField(verbose_name='执行的SQL', default='')
-    execute_progress = models.SmallIntegerField(default=0, choices=utils.taskProgressChoice, verbose_name=u'执行进度')
+    progress = models.SmallIntegerField(default=0, choices=utils.taskProgressChoice, verbose_name=u'执行进度')
     affected_rows = models.IntegerField(default=0, verbose_name=u'影响行数')
     consuming_time = models.DecimalField(default=0.000, max_digits=10, decimal_places=3, verbose_name='耗时')
     execute_log = models.TextField(verbose_name=u'执行的日志', default='')
@@ -172,18 +169,15 @@ class DbOrdersExecuteTasks(models.Model):
     execute_time = models.DateTimeField(auto_now=True, verbose_name='工单执行时间')
     created_time = models.DateTimeField(auto_now_add=True, verbose_name=u'创建时间')
 
-    def fmt_sql(self):
-        return self.sql[:128]
-
     class Meta:
         verbose_name = u'DB工单执行任务'
         verbose_name_plural = verbose_name
 
-        index_together = (('taskid',), ('execute_progress',),)
+        index_together = (('task_id',), ('progress',),)
 
         default_permissions = ()
         app_label = 'sqlorders'
-        db_table = 'yasql_sqlorders_execute_tasks'
+        db_table = 'yasql_dborders_execute_tasks'
 
 
 class DbExportFiles(models.Model):
@@ -205,4 +199,4 @@ class DbExportFiles(models.Model):
         verbose_name_plural = verbose_name
 
         default_permissions = ()
-        db_table = 'yasql_sqlorders_export_files'
+        db_table = 'yasql_db_export_files'

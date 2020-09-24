@@ -36,14 +36,13 @@ const route = {
       component: () => import('./commit.vue'),
       meta: { title: '提交导出工单', keepAlive: true, icon: 'bars' }
     },
-    
-
-    // {
-    //   name: "view.sqlorders.tasks.list",
-    //   path: "tasks/list/:taskid",
-    //   component: () => import("./SqlOrders/tasks/index.vue"),
-    //   meta: { title: "工单任务", hidden: true }
-    // }
+    {
+      name: "view.sqlorders.tasks",
+      path: "/sqlorders/tasks/:task_id",
+      hidden: true,
+      component: () => import("./task.vue"),
+      meta: { title: "工单任务", hidden: true }
+    }
   ]
 }
 
