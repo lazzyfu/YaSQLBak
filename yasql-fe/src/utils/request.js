@@ -20,15 +20,12 @@ const errorHandler = error => {
     // 从 localstorage 获取 token
     const token = storage.get(ACCESS_TOKEN)
     if (error.response.status === 403) {
-      notification.error({
-        message: 'Forbidden',
-        description: data.message
-      })
+      redirect({ name: '403' })
     }
-    if (error.response.status === 401 ) {
+    if (error.response.status === 401) {
       notification.error({
         message: 'Unauthorized',
-        description: 'Authorization verification failed'
+        description: '认证失败，请重新登录'
       })
       if (token) {
         store.dispatch('Logout').then(() => {
@@ -42,7 +39,7 @@ const errorHandler = error => {
   return Promise.reject(error)
 }
 
-// request interceptor
+// 请求拦截
 request.interceptors.request.use(
   config => {
     const token = storage.get(ACCESS_TOKEN)
@@ -58,17 +55,11 @@ request.interceptors.request.use(
   }
 )
 
-// response interceptor
+// 响应拦截
 request.interceptors.response.use(
   response => {
     return response.data
-  },
-  (error) => {
-    if (error.response.status === 403) {
-      redirect({ 'name': '403' })
-    }
-    return Promise.reject(error)
-  }
+  }, errorHandler
 )
 
 const installer = {

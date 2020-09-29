@@ -700,3 +700,22 @@ class HookSqlOrdersSerializer(serializers.ModelSerializer):
         # 更新工单状态为已勾住
         obj.progress = 7
         obj.save()
+
+
+class ReleaseVersionsListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.ReleaseVersions
+        fields = "__all__"
+
+    def to_representation(self, instance):
+        ret = super(ReleaseVersionsListSerializer, self).to_representation(instance)
+        ret["key"] = instance.pk
+        ret["created_at"] = datetime.strftime(instance.created_at, "%Y-%m-%d %H:%M:%S")
+        ret["expire_time"] = datetime.strftime(instance.expire_time, "%Y-%m-%d")
+        return ret
+
+
+class ReleaseVersionsCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.ReleaseVersions
+        fields = ['username', 'version', 'expire_time']

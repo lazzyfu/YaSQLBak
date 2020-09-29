@@ -34,4 +34,15 @@ urlpatterns = [
     # download export files
     path('export/download/<str:base64_filename>', views.DownloadExportFilesView.as_view(),
          name='v1.sqlorders.download-export-files'),
+    # 上线版本
+    path('versions/get', views.ReleaseVersionsGet.as_view(), name='v1.sqlorders.versions.get'),
+    path('versions/list', views.ReleaseVersionsList.as_view(), name='v1.sqlorders.versions.list'),
+    path('versions/create', views.ReleaseVersionsCreate.as_view(),
+         name='v1.sqlorders.versions.create'),
+    path('versions/update/<int:key>', views.ReleaseVersionsUpdate.as_view(),
+         name='v1.sqlorders.versions.update'),
+    path('versions/delete/<int:id>', views.ReleaseVersionsDelete.as_view(),
+         name='v1.sqlorders.versions.delete'),
+    path('versions/view/<str:version>', views.ReleaseVersionsView.as_view(),
+         name='v1.sqlorders.versions.view'),
 ]

@@ -37,7 +37,7 @@ class ReleaseVersions(models.Model):
     id = models.AutoField(primary_key=True, verbose_name=u'主键id')
     username = models.CharField(default='', null=False, max_length=128, verbose_name=u'创建用户')
     version = models.CharField(default='', null=False, max_length=128, unique=True, verbose_name=u'版本号')
-    expire_time = models.DateTimeField(auto_now_add=True, verbose_name=u'截止上线日期')
+    expire_time = models.DateField(verbose_name=u'截止上线日期')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=u'创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name=u'更新时间')
 

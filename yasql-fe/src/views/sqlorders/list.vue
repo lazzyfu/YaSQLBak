@@ -97,9 +97,8 @@
       <template slot="version" slot-scope="text">
         <span v-if="text">
           <router-link
-            :to="{ name: 'view.sqlorders.version.detail', params: {version: text}}"
+            :to="{ name: 'view.sqlorders.version.view', params: {version: text}}"
           >{{text}}</router-link>
-          dasdsa
         </span>
         <span v-else>-</span>
       </template>

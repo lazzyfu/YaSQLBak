@@ -10,7 +10,7 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.generics import ListAPIView, GenericAPIView
+from rest_framework.generics import ListAPIView, GenericAPIView, CreateAPIView, UpdateAPIView, DestroyAPIView
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
 
@@ -367,3 +367,123 @@ class DownloadExportFilesView(APIView):
         response = HttpResponse(fsock, content_type="application/zip")
         response['Content-Disposition'] = f'attachment; filename={file_name}'
         return response
+
+
+class ReleaseVersionsGet(APIView):
+    """获取上线版本号，提交工单使用"""
+
+    def get(self, request):
+        before_30_days = (timezone.now() - datetime.timedelta(days=30))
+        queryset = models.ReleaseVersions.objects.filter(
+            expire_time__gte=before_30_days
+        ).values('id', 'version', 'expire_time').order_by('-created_at')
+        for row in queryset:
+            row['disabled'] = 0
+            if row['expire_time'] < datetime.datetime.date(timezone.now()):
+                row['disabled'] = 1
+        return JsonResponseV1(data=queryset)
+
+
+class ReleaseVersionsList(ListAPIView):
+    """获取上线版本号列表，管理上线版本号使用"""
+    queryset = models.ReleaseVersions.objects.all()
+    serializer_class = serializers.ReleaseVersionsListSerializer
+    pagination_class = Pagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['username', 'version', 'expire_time']
+    ordering = ['-created_at']
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, many=True)
+        render_columns = [
+            {'key': 'version', 'value': '版本'},
+            {'key': 'username', 'value': '创建人'},
+            {'key': 'expire_time', 'value': '截止日期'},
+            {'key': 'created_at', 'value': '创建时间'},
+            {'key': 'key', 'value': '操作'},
+            {'key': 'id', 'value': '详情'},
+        ]
+        columns = render_dynamic_columns(render_columns)
+        data = {'columns': columns, 'data': serializer.data}
+        return self.get_paginated_response(data)
+
+
+class ReleaseVersionsCreate(CreateAPIView):
+    """创建版本"""
+    serializer_class = serializers.ReleaseVersionsCreateSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            return JsonResponseV1(message="创建成功")
+        return JsonResponseV1(code='0001', message=serializer.errors, flat=True)
+
+
+class ReleaseVersionsUpdate(UpdateAPIView):
+    """更新版本号，该类只更新单条记录"""
+
+    def put(self, request, *args, **kwargs):
+        serializer = serializers.ReleaseVersionsSerializer(
+            instance=models.ReleaseVersions.objects.get(pk=kwargs['key']),  # 返回单条记录
+            data=request.data
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return JsonResponseV1(message="更新成功")
+        return JsonResponseV1(code='0001', message=serializer.errors, flat=True)
+
+
+class ReleaseVersionsDelete(DestroyAPIView):
+    """删除版本"""
+    queryset = models.ReleaseVersions.objects.all()
+    lookup_field = 'id'  # 默认为主键，可不写
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return JsonResponseV1(message="删除成功")
+
+
+class ReleaseVersionsView(APIView):
+    """获取指定版本内工单在所有环境的进度"""
+
+    def get(self, request, *args, **kwargs):
+        # 获取版本对应的主键
+        version = kwargs.get('version')
+        version_id = models.ReleaseVersions.objects.get(version=version).pk
+        # 获取环境，行转为动态列
+        obj = models.DbEnvironment.objects.values('id', 'name')
+        row2columns = ''
+        for row in obj:
+            row2columns += f"max(if(env_id={row['id']}, progress, -1)) as {row['name']},"
+        # 获取任务下所有工单分别在各个环境中的状态，此处的环境为动态环境
+        # id没有实际意义
+        query = f"select " + row2columns + \
+                f"substring(MD5(RAND()),1,20) as id,title as escape_title,order_id, applicant " \
+                f"from yasql_dborders where version_id='{version_id}' group by escape_title,order_id,applicant"
+        rawquery = models.DbOrders.objects.raw(query)
+        # 获取环境列名
+        dynamic_columns = list(rawquery.columns)[:-4]
+        data = []
+        for row in rawquery:
+            columns = {
+                'id': row.id,
+                'escape_title': row.escape_title,
+                'order_id': row.order_id,
+                'applicant': row.applicant,
+            }
+            for col in dynamic_columns:
+                columns[col] = getattr(row, col)
+            data.append(columns)
+
+        render_columns = [
+            {'key': 'escape_title', 'ellipsis': True, 'value': '标题'},
+            {'key': 'applicant', 'value': '申请人'},
+        ]
+        render_columns.extend([{'key': x, 'value': x} for x in dynamic_columns])
+        columns = render_dynamic_columns(render_columns)
+        data = {'columns': columns, 'data': data}
+        return JsonResponseV1(data=data)
