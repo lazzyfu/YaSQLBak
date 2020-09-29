@@ -30,5 +30,8 @@ urlpatterns = [
     path('tasks/throttle', views.ThrottleTaskView.as_view(), name='v1.sqlorders.throttle-task'),
     path('tasks/result/<int:id>', views.GetTasksResultView.as_view(), name='v1.sqlorders.get-tasks-result'),
     # Hook
-    path('hook', views.HookSqlOrdersView.as_view(), name='v1.sqlorders.hook-sqlorders')
+    path('hook', views.HookSqlOrdersView.as_view(), name='v1.sqlorders.hook-sqlorders'),
+    # download export files
+    path('export/download/<str:base64_filename>', views.DownloadExportFilesView.as_view(),
+         name='v1.sqlorders.download-export-files'),
 ]

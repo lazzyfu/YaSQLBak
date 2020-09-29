@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 # edit by fuzongfei
-import base64
 import csv
 import os
 import subprocess
@@ -16,6 +15,8 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+
+from sqlorders import models
 
 channel_layer = get_channel_layer()
 logger = get_task_logger('noahCelery')
@@ -48,7 +49,7 @@ class ExecuteExport(object):
     def __init__(self, config):
         """
         {'host': '127.0.0.1', 'port': 3306, 'charset': 'utf8', 'rds_type': 3, 'database': 'test', 'file_format': 'csv',
-        'user': 'yops_rw', 'password': '123.com', 'task_id': '1e0695520bb640e2ab9dcb8258aeb937'，
+        'user': 'yasql_rw', 'password': '123.com', 'task_id': '1e0695520bb640e2ab9dcb8258aeb937'，
         'id': 11, 'username': ''}
         """
         self.config = config
@@ -108,7 +109,7 @@ class ExecuteExport(object):
         ws.title = self.title
 
         # 推送消息
-        msg = f'正在执行导出SQL: {self.sql}'
+        msg = f'正在执行导出SQL: {self.sql} \n'
         self.pm.pull(msg=msg)
         self.execute_log.append(msg)
 
@@ -117,7 +118,7 @@ class ExecuteExport(object):
         with cnx.cursor() as cursor:
             cursor.execute(self.sql)
             # 推送消息
-            msg = f'正在处理并生成XLSX数据'
+            msg = f'正在处理并生成XLSX数据 \n'
             self.pm.pull(msg=msg)
             self.execute_log.append(msg)
             # 标题
@@ -146,7 +147,7 @@ class ExecuteExport(object):
     def _exprt_to_csv(self, cnx):
         # 导出csv的文件
         # 推送消息
-        msg = f'正在执行导出SQL: {self.sql}'
+        msg = f'正在执行导出SQL: {self.sql} \n'
         self.pm.pull(msg=msg)
         self.execute_log.append(msg)
 
@@ -157,7 +158,7 @@ class ExecuteExport(object):
             with cnx.cursor() as cursor:
                 cursor.execute(self.sql)
                 # 推送消息
-                msg = f'正在处理并生成CSV数据'
+                msg = f'正在处理并生成CSV数据 \n'
                 self.pm.pull(msg=msg)
                 self.execute_log.append(msg)
                 # 标题
@@ -181,7 +182,7 @@ class ExecuteExport(object):
 
     def compress_file(self):
         # 推送消息
-        msg = f'正在压缩文件: {self.tmp_file} -> {self.tmp_zip_file}'
+        msg = f'正在压缩文件: {self.tmp_file} -> {self.tmp_zip_file} \n'
         self.pm.pull(msg=msg)
         self.execute_log.append(msg)
 
@@ -217,13 +218,13 @@ class ExecuteExport(object):
                 os.remove(f)
 
         # 发送消息
-        tasks.sql_order_msg_push.delay(pk=models.DbOrdersExecuteTasks.objects.get(pk=self.config['id']).order_id,
-                                       op='_export',
-                                       username=self.config['username'],
-                                       export_file_name=base64.b64encode(obj.file_name.encode()).decode(),
-                                       export_file_encryption_key=obj.encryption_key,
-                                       export_sql=self.sql
-                                       )
+        # tasks.sql_order_msg_push.delay(pk=models.DbOrdersExecuteTasks.objects.get(pk=self.config['id']).order_id,
+        #                                op='_export',
+        #                                username=self.config['username'],
+        #                                export_file_name=base64.b64encode(obj.file_name.encode()).decode(),
+        #                                export_file_encryption_key=obj.encryption_key,
+        #                                export_sql=self.sql
+        #                                )
 
     def run(self, sql):
         try:
@@ -240,7 +241,7 @@ class ExecuteExport(object):
 
             self.compress_file()
 
-            msg = f"执行耗时: {self.result['consuming_time']}"
+            msg = f"执行耗时: {self.result['consuming_time']} \n"
             self.pm.pull(msg=msg)
             self.execute_log.append(msg)
         except Exception as err:

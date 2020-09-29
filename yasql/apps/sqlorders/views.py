@@ -1,10 +1,11 @@
 # -*- coding:utf-8 -*-
 # edit by fuzongfei
+import base64
 import datetime
 # Create your views here.
 import json
 
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
@@ -13,6 +14,7 @@ from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
 
+from libs import permissions
 from libs.Pagination import Pagination
 from libs.RenderColumns import render_dynamic_columns
 from libs.response import JsonResponseV1
@@ -42,7 +44,7 @@ class GetDBEnvironment(ListAPIView):
 
 
 class GetDbSchemas(APIView):
-    # 获取指定环境审核用途(use_type=0)的schemas列表
+    # 获取指定环境指定用途的schemas列表
     def get(self, request):
         serializer = serializers.DbSchemasSerializer(data=request.query_params)
         if serializer.is_valid():
@@ -345,3 +347,23 @@ class HookSqlOrdersView(APIView):
             serializer.save()
             return JsonResponseV1(message="任务提交成功，请查看输出")
         return JsonResponseV1(message=serializer.errors, code='0001', flat=True)
+
+
+class DownloadExportFilesView(APIView):
+    """下载导出文件"""
+    permission_classes = (permissions.CanViewOrdersPermission,)
+
+    def get(self, request, base64_filename):
+        file_name = base64.b64decode(base64_filename).decode()
+
+        if not models.DbExportFiles.objects.filter(file_name=file_name).exists():
+            raise Http404
+
+        obj = models.DbExportFiles.objects.get(file_name=file_name)
+        if not models.DbOrdersExecuteTasks.objects.get(pk=obj.task_id).applicant == request.user.username:
+            raise PermissionDenied(detail='您没有权限')
+
+        fsock = open(f"media/{obj.files}", 'rb')
+        response = HttpResponse(fsock, content_type="application/zip")
+        response['Content-Disposition'] = f'attachment; filename={file_name}'
+        return response

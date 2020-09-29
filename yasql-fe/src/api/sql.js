@@ -135,3 +135,11 @@ export const HookSqlOrders = params =>
     method: 'post',
     data: params
   })
+
+// 下载导出文件
+export const downloadExportFiles = params =>
+  axios.request({
+    url: `/sqlorders/export/download/${params}`,
+    method: 'get',
+    responseType: 'blob'
+  })

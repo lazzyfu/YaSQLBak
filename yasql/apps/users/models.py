@@ -13,7 +13,7 @@ class UserAccounts(AbstractUser):
     is_active = models.BooleanField(default=True, verbose_name=u'是否激活')
     displayname = models.CharField(max_length=128, default='', verbose_name=u'别名')
     mobile = models.CharField(max_length=11, null=True, blank=True, verbose_name=u'用户手机号')
-    department = models.CharField(max_length=128, null=True, blank=True, verbose_name=u'部门')
+    department = models.CharField(max_length=128, null=False, blank=True, default='', verbose_name=u'部门')
     avatar_file = models.ImageField(upload_to='img/%Y/%m/%d/',
                                     default=u'img/avatar1.png',
                                     verbose_name=u'用户头像')

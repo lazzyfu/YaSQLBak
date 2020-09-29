@@ -42,7 +42,14 @@ const route = {
       hidden: true,
       component: () => import("./task.vue"),
       meta: { title: "工单任务", hidden: true }
-    }
+    },
+    {
+      name: "view.sqlorders.export.download",
+      path: "/sqlorders/export/download/:base64_filename",
+      hidden: true,
+      component: () => import("./download.vue"),
+      meta: { title: "下载导出文件", hidden: true }
+    },
   ]
 }
 

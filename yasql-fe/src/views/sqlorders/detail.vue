@@ -161,7 +161,7 @@
         </a-modal>
       </template>
 
-      <a-card style="margin: -5px 0" :bordered="false" title="事件进度">
+      <a-card :bordered="false" title="事件进度" style="margin-top: -10px">
         <a-steps :current="currentStatus" size="small">
           <a-step title="创建工单"></a-step>
           <a-step title="审核中"></a-step>
@@ -172,7 +172,7 @@
           <a-step title="已勾住"></a-step>
         </a-steps>
 
-        <a-card type="inner" title="事件状态" style="margin-top: 10px">
+        <a-card type="inner" title="事件状态" style="margin-top: 18px">
           <a-descriptions
             size="small"
             :col="4"
@@ -238,7 +238,7 @@
         </a-card>
       </a-card>
 
-      <a-card title="工单内容" :bordered="false" style="margin-top: 10px">
+      <a-card title="工单内容" :bordered="false" style="margin-top: -10px">
         <codemirror ref="myCm" v-model="code" :options="cmOptions" @ready="onCmReady"></codemirror>
       </a-card>
 
@@ -352,6 +352,7 @@ export default {
       this.ruleForm.database = '' //切换环境时，置空已选择的库名
       const params = {
         env_id: value,
+        use_type: 0,
         rds_category: this.orderDetail.rds_category,
       }
       getDbSchemas(params).then((response) => {

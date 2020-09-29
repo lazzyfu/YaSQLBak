@@ -39,6 +39,7 @@ class DbEnvironmentSerializer(serializers.ModelSerializer):
 
 class DbSchemasSerializer(serializers.Serializer):
     env_id = serializers.CharField()
+    use_type = serializers.IntegerField()
     rds_category = serializers.ChoiceField(choices=utils.rdsCategory)
 
     @property
@@ -47,7 +48,7 @@ class DbSchemasSerializer(serializers.Serializer):
         vdata = self.validated_data
         queryset = models.DbSchemas.objects.filter(
             cid__env_id=vdata['env_id'],
-            cid__use_type=0,
+            cid__use_type=vdata['use_type'],
             cid__rds_category=vdata['rds_category']
         ).annotate(host=F('cid__host'),
                    port=F('cid__port'),

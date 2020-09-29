@@ -133,7 +133,8 @@ export default {
       resultLoading: false,
       timer: "",
       websocket: {
-        path: `${protocol}/${window.location.host}/ws/sql/${this.$route.params.task_id}/`,
+        // path: `${protocol}/${window.location.host}/ws/sql/${this.$route.params.task_id}/`,
+        path: `${protocol}/127.0.0.1:8000/ws/sql/${this.$route.params.task_id}/`,
         socket: "",
       },
       loading: false,
@@ -185,6 +186,7 @@ export default {
   methods: {
     // 初始化websocket
     init_websocket() {
+      console.log(this.websocket);
       if (typeof WebSocket === "undefined") {
         this.$message.error("您的浏览器不支持websocket");
       }
@@ -198,7 +200,6 @@ export default {
       this.websocket.socket.onmessage = this.socketOnMessage;
     },
     socketOnOpen() {
-      //
     },
     socketOnError() {
       this.init_websocket();

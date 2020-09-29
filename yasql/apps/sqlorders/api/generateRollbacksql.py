@@ -3,11 +3,10 @@
 import datetime
 import json
 import logging
-import sys
-import traceback
 
 import simplejson
 from pymysql import escape_string
+from pymysql.constants import FIELD_TYPE
 from pymysqlreplication import BinLogStreamReader
 from pymysqlreplication.event import QueryEvent
 from pymysqlreplication.row_event import DeleteRowsEvent, UpdateRowsEvent, WriteRowsEvent
@@ -102,12 +101,41 @@ class ReadRemoteBinlog(object):
             else:
                 return f"`{k}`=\"{v}\""
 
-    def _format_binlog(self, rows):
-        return simplejson.dumps(rows, default=self._handler_date)
+    def _format_binlog(self, row):
+        return simplejson.dumps(row, default=self._handler_date)
+
+    def _geometry(self, row):
+        """解码Geometry类型
+        列类型：{'column': 'GEO_LOCATION', 'type': 255}
+        # pymysqlreplication返回的原始数据
+        > a = b'\x00\x00\x00\x00\x01\x01\x00\x00\x00\xcd#\x7f0\xf0\x19]@\xb0\x1e\xf7\xad\xd6\xf3C@'
+        > bytes.hex(a)
+        Out[54]: '000000000101000000cd237f30f0195d40b01ef7add6f34340'
+
+        # 在数据库存储的原始数据为：unhex('000000000101000000cd237f30f0195d40b01ef7add6f34340')
+        # 需要将回滚语句里面的"unhex('xxx')"改写为unhex('xxx')插入即可
+        mysql> select AsText(unhex('000000000101000000cd237f30f0195d40b01ef7add6f34340'));
+        +------------------------------------------------------------------------+
+        | AsText(unhex('000000000101000000cd237f30f0195d40b01ef7add6f34340')) |
+        +------------------------------------------------------------------------+
+        | POINT(116.405285 39.904989)                                            |
+        +------------------------------------------------------------------------+
+        然后在插入
+        """
+        for col in row['columns']:
+            if col['type'] == FIELD_TYPE.GEOMETRY:
+                name = col['column']
+                if row['type'] in ['INSERT', 'DELETE']:
+                    row['values'][name] = f"unhex('{bytes.hex(row['values'][name])}')"
+                if row['type'] == 'UPDATE':
+                    row['before'][name] = f"unhex('{bytes.hex(row['before'][name])}')"
+                    row['after'][name] = f"unhex('{bytes.hex(row['after'][name])}')"
+        return row
 
     def _generate_rollback_sql(self, rows):
         rollback_statement = []
         for row in rows:
+            row = self._geometry(row)
             format_row = json.loads(self._format_binlog(row))
             type = format_row['type']
             database = format_row['database']
@@ -171,9 +199,12 @@ class ReadRemoteBinlog(object):
                     if not isinstance(binlogevent, QueryEvent):
                         if self.thread_id == thread_id and query == 'BEGIN':
                             for row in binlogevent.rows:
+                                columns = [{'column': x.name, 'type': x.type} for x in binlogevent.columns]
                                 binlog = {'database': binlogevent.schema,
                                           'table': binlogevent.table,
-                                          'primary_key': binlogevent.primary_key}
+                                          'primary_key': binlogevent.primary_key,
+                                          'columns': columns
+                                          }
                                 if isinstance(binlogevent, DeleteRowsEvent):
                                     binlog['values'] = row["values"]
                                     binlog['type'] = 'DELETE'
@@ -195,5 +226,6 @@ class ReadRemoteBinlog(object):
             # print('-' * 60)
             # traceback.print_exc(file=sys.stdout)
             # print('-' * 60)
+            print(err)
             result = {'status': 'fail', 'msg': str(err)}
         return result

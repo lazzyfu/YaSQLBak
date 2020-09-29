@@ -13,7 +13,7 @@ export const rdsCategory = [
 
 export const SqlRemark = ['立即执行', '上线执行']
 
-const fileFormat = [
+export const fileFormat = [
   { key: 'xlsx', value: 'xlsx' },
   { key: 'csv', value: 'csv' }
 ]

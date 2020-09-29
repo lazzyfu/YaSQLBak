@@ -72,7 +72,7 @@ class ExecuteSQL(object):
     def __init__(self, config):
         """
         {'host': '127.0.0.1', 'port': 3306, 'charset': 'utf8', 'rds_type': 3, 'database': 'test', rds_category: 1,
-        'user': 'yops_rw', 'password': '123.com', 'task_id': '1e0695520bb640e2ab9dcb8258aeb937', 'sql_type': 'DML'}
+        'user': 'yasql_rw', 'password': '123.com', 'task_id': '1e0695520bb640e2ab9dcb8258aeb937', 'sql_type': 'DML'}
         """
         self.config = config
         self.sql = None

@@ -4,18 +4,8 @@
       <a-row>
         <a-col :span="16" :push="8">
           <div style="margin-bottom: 5px">
-            <a-button
-              type="dashed"
-              icon="thunderbolt"
-              style="margin-right: 6px"
-              @click="formatSQL()"
-            >格式化</a-button>
-            <a-button
-              type="dashed"
-              icon="safety"
-              style="margin-right: 6px"
-              @click="syntaxCheck()"
-            >语法检查</a-button>
+            <a-button type="dashed" icon="thunderbolt" style="margin-right: 6px" @click="formatSQL()">格式化</a-button>
+            <a-button type="dashed" icon="safety" style="margin-right: 6px" @click="syntaxCheck()">语法检查</a-button>
           </div>
           <codemirror ref="myCm" v-model="code" :options="cmOptions" @ready="onCmReady"></codemirror>
         </a-col>
@@ -43,25 +33,19 @@
                     <div slot="content">
                       <span>
                         开启后
-                        <br />仅工单的提交人、审核人、复核人和DBA
-                        <br />可以查看工单内容
+                        <br />仅工单的提交人、审核人、复核人和DBA <br />可以查看工单内容
                       </span>
                     </div>
                     <i class="el-icon-question table-msg" />
                   </el-tooltip>
                 </span>
               </template>
-              <a-switch style="margin-bottom:1px" defaultChecked @change="onMyChange" />
+              <a-switch style="margin-bottom: 1px" defaultChecked @change="onMyChange" />
             </el-form-item>
 
             <el-form-item label="版本" v-if="isShow" key="bindVersion">
               <el-select v-model="ruleForm.version" style="width: 95%" placeholder="请选择上线版本" value>
-                <el-option
-                  v-for="item in versions"
-                  :key="item.id"
-                  :label="item.version"
-                  :value="item.id"
-                ></el-option>
+                <el-option v-for="item in versions" :key="item.id" :label="item.version" :value="item.id"></el-option>
               </el-select>
             </el-form-item>
 
@@ -122,6 +106,19 @@
                   :label="`${item.comment}-${item.schema}`"
                   :value="`${item.cid}__${item.schema}`"
                 ></el-option>
+              </el-select>
+            </el-form-item>
+
+            <el-form-item label="文件格式" prop="file_format" v-if="!isShow" key="bindFileFormart">
+              <el-select
+                v-model="ruleForm.file_format"
+                style="width: 95%"
+                clearable
+                filterable
+                placeholder="请选择文件格式"
+                value
+              >
+                <el-option v-for="item in format" :key="item.key" :label="item.value" :value="item.key"></el-option>
               </el-select>
             </el-form-item>
 
@@ -201,7 +198,7 @@
           :pagination="pagination"
           :loading="tableLoading"
           :rowClassName="setRowClass"
-          :rowKey="record => record.order_id"
+          :rowKey="(record) => record.order_id"
           @change="handleTableChange"
           size="middle"
         >
@@ -217,7 +214,10 @@
       <a-modal v-model="tidbVisible" title="TiDB注意事项" width="55%" @ok="handleTiDBOk">
         <div style="font-size: 12px">
           <el-divider content-position="left">DML事务</el-divider>
-          <p>TiDB单条DML语句最大支持的事务为3W, 若是更新（DELETE/UPDATE）超过了3W条记录，需要拆分为多条SQL语句，每条SQL后面加上LIMIT 20000。</p>
+          <p>
+            TiDB单条DML语句最大支持的事务为3W,
+            若是更新（DELETE/UPDATE）超过了3W条记录，需要拆分为多条SQL语句，每条SQL后面加上LIMIT 20000。
+          </p>
           <h3>例子：</h3>
           <h4>原始SQL：</h4>
           <p>UPDATE TEST1 SET NAME='XXX' WHERE I_STATUS = 2;</p>
@@ -233,7 +233,10 @@
           <p>TiDB的ALTER语句不支持聚合写法，MODIFY/CHANGE/ADD等需要拆分</p>
           <h3>例子：</h3>
           <h4>原始SQL：</h4>
-          <p>ALTER TABLE TEST1 ADD COL1 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX',ADD COL2 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX';</p>
+          <p>
+            ALTER TABLE TEST1 ADD COL1 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX',ADD COL2 CHAR(10) NOT NULL DEFAULT ''
+            COMMENT 'XX';
+          </p>
           <h4>改写为：</h4>
           <p>ALTER TABLE TEST1 ADD COL1 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX';</p>
           <p>ALTER TABLE TEST1 ADD COL2 CHAR(10) NOT NULL DEFAULT '' COMMENT 'XX';</p>
@@ -244,7 +247,7 @@
 </template>
 
 <script>
-import { SqlRemark, rdsCategory } from '@/utils/sql'
+import { SqlRemark, rdsCategory, fileFormat } from '@/utils/sql'
 import {
   getUsers,
   getDbSchemas,
@@ -308,6 +311,7 @@ export default {
       schemas: [],
       users: [],
       remarks: SqlRemark,
+      format: fileFormat,
       versions: [],
       rds_category: rdsCategory,
       envs: [],
@@ -318,6 +322,7 @@ export default {
         version: '', // 上线版本号
         is_hide: 'OFF', //是否隐藏数据
         remark: '', // 备注
+        file_format: 'csv',
         rds_category: 1, // 数据库类别
         env_id: '', // 环境
         database: '', // 库名
@@ -344,6 +349,7 @@ export default {
             trigger: 'blur',
           },
         ],
+        file_format: [{ required: true, message: '请选择文件格式', trigger: 'change' }],
         remark: [{ required: true, message: '请选择备注', trigger: 'change' }],
         rds_category: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
         env_id: [{ required: true, validator: check_rds_category, trigger: 'change' }],
@@ -513,11 +519,14 @@ export default {
     },
     // 变更环境，获取schemas
     changeEnvs(value) {
-      console.log('value: ', value)
       this.ruleForm.database = '' //切换环境时，置空已选择的库名
       const params = {
         env_id: value,
+        use_type: 0,
         rds_category: this.ruleForm.rds_category,
+      }
+      if (this.sqltype === 'EXPORT') {
+        params.use_type = 1
       }
       getDbSchemas(params).then((response) => {
         this.schemas = response.data
