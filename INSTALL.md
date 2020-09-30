@@ -123,7 +123,7 @@ systemctl start nginx.service
 cd /data/www/yasql/yasql
 /venvyasql/bin/pip3.7 install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 ```
->最好选择一个干净的系统，最好本地不要有自己安装的mysql包，否则在安装mysql-client时报ln类的错误。当然您也可以加ln解决
+>最好选择一个干净的系统，最好本地不要有自己安装的mysql包，否则在安装mysql-client时报ln类的错误。当然您也可以ln解决
 
 ### 2.安装UWSGI服务
 `/venvyasql/bin/pip3.7 install uwsgi -i https://mirrors.aliyun.com/pypi/simple`
@@ -140,22 +140,110 @@ mkdir static
 
 ```bash
 yum -y install redis
-vim /etc/redis.conf
-```
 
-```editorconfig
-# 配置改为如下，增加密码
+# 更改redis配置
+vim /etc/redis.conf
+# 配置改为如下，此处设置密码
 bind 127.0.0.1
 requirepass 1234.com
-```
 
-```bash
+# 启动redis服务
 systemctl enable redis.service
 systemctl start redis.service
 ```
 
+### 5.初始化库表结构
+按照要求进行调整
+```bash
+vim /data/www/yasql/yasql/config.py
+
+# 配置MySQL数据库，库必须先创建，且库的字符集必须为:utf8
+# 存储django程序运行的系统库表等数据
+# 权限：grant all on yasql.* to 'yasql_rw'@'%';
+DB = {
+    'database': 'yasql',
+    'user': 'yasql_rw',
+    'host': '10.10.1.77',
+    'port': 3306,
+    'password': '123.com',
+}
+```
+
+>执行migrate生成表结构，该操作会连接到上面的数据库创建表结构
+
+/venvyasql/bin/python3.7 manage.py migrate
+
+### 5.部署supervisor服务
+```bash
+/usr/local/bin/pip3.7 install supervisor
+/usr/local/bin/echo_supervisord_conf > /etc/supervisord.conf
+```
+
+`vim /etc/supervisord.conf`
+```editorconfig
+# 更改为
+[include]
+files = supervisord.d/*.conf
+```
+
+```bash
+mkdir /etc/supervisord.d
+cd  /etc/supervisord.d
+```
 
 
+### 6.配置supervisor服务
+vim /etc/supervisord.d/yasql.conf
+```editorconfig
+[program:yasql-server]
+user=www
+autorestart=true
+environment=DJANGO_SETTINGS_MODULE="yasql.settings"
+directory=/data/www/yasql/yasql
+command=/venvyasql/bin/python3 /venvyasql/bin/gunicorn -w 8 -b 127.0.0.1:8000 yasql:wsgi:application
+redirect_stderr=true
+stdout_logfile=/data/www/yasql/yasql/logs/yasql-server.log
+
+[program:yasql-daphne]
+user=www
+autorestart=true
+environment=DJANGO_SETTINGS_MODULE="yasql.settings"
+directory=/data/www/yasql/yasql
+numprocs=1
+command=/venvyasql/bin/daphne -b 127.0.0.1 -p 8001 --proxy-headers -v2 yasql.asgi:application
+redirect_stderr=true
+stdout_logfile=/data/www/yasql/yasql/logs/yasql-daphne.log
+
+[program:yasql-celery-dbtask]
+user=www
+environment=DJANGO_SETTINGS_MODULE="yasql.settings"
+directory=/data/www/yasql/yasql
+command=/venvyasql/bin/celery worker -A yasql -n localhost -Q dbtask -l info --time-limit=86400 --concurrency=20
+redirect_stderr=true
+stdout_logfile=/data/www/yasql/yasql/logs/yasql-celery-dbtask.log
+numprocs=1
+autostart=true
+autorestart=true
+startsecs=10
+stopwaitsecs = 600
+stopasgroup=true
+priority=1000
+```
+
+### 7.启动服务
+#### 编辑config.py
+```bash
+cd /data/www/yasql/yasql
+
+# 按照要求进行修改
+vim config.py
+ 
+# 创建日志目录
+mkdir /data/www/yasql/yasql/logs
+
+# 启动supervisor进程
+/usr/local/bin/supervisord -c /etc/supervisord.conf
+```
 
 
 
