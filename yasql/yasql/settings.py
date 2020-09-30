@@ -129,7 +129,7 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{REDIS['host']}:{REDIS['port']}",
+        "LOCATION": f"redis://:{REDIS['password']}@{REDIS['host']}:{REDIS['port']}/0",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -168,18 +168,15 @@ USE_TZ = True
 
 # 静态文件
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, '/static/')
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static')
-]
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # media文件
 MEDIA_URL = '/api/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Celery Config
-CELERY_BROKER_URL = f"redis://{REDIS['host']}:{REDIS['port']}"
-CELERY_RESULT_BACKEND = f"redis://{REDIS['host']}:{REDIS['port']}"
+CELERY_BROKER_URL = f"redis://:{REDIS['password']}@{REDIS['host']}:{REDIS['port']}/0"
+CELERY_RESULT_BACKEND = f"redis://:{REDIS['password']}@{REDIS['host']}:{REDIS['port']}/0"
 CELERY_ACCEPT_CONTENT = ['pickle', 'json', 'msgpack', 'yaml']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'default'
@@ -204,7 +201,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [(REDIS['host'], REDIS['port'])],
+            "hosts": [f"redis://:{REDIS['password']}@{REDIS['host']}:{REDIS['port']}/0", ],
             "capacity": 1500,  # default 100
             "expiry": 10,  # default 60
         },

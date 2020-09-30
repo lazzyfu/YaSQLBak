@@ -26,7 +26,8 @@ REOMOTE_USER = {
 # 存储session、消息队列等
 REDIS = {
     'host': '127.0.0.1',
-    'port': 6379
+    'port': 6379,
+    'password': '1234.com'
 }
 
 # gh-ost工具使用
