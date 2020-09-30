@@ -186,7 +186,6 @@ export default {
   methods: {
     // 初始化websocket
     init_websocket() {
-      console.log(this.websocket);
       if (typeof WebSocket === "undefined") {
         this.$message.error("您的浏览器不支持websocket");
       }
@@ -329,7 +328,6 @@ export default {
           }, 500);
         })
         .catch((err) => {
-          console.log("err: ", err);
           setTimeout(() => {
             this.resultLoading = false;
           }, 500);

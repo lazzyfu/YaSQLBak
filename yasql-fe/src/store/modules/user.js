@@ -58,9 +58,7 @@ const user = {
         try {
           getInfo()
             .then(response => {
-              console.log('user info response: ', response)
               const result = response.data
-              console.log('result111: ', result)
               commit('SET_INFO', result)
               commit('SET_NAME', { name: result.username, welcome: welcome() })
               commit('SET_AVATAR', result.avatar)
@@ -77,7 +75,7 @@ const user = {
               reject('unauth')
             })
         } catch (e) {
-          console.log('e: ', e)
+          // console.log('e: ', e)
         }
       })
     },

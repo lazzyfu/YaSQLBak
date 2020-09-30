@@ -243,7 +243,6 @@ export default {
           }, 500);
         })
         .catch((err) => {
-          console.log("err: ", err);
           setTimeout(() => {
             this.resultLoading = false;
           }, 500);
