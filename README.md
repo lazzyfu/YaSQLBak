@@ -186,11 +186,13 @@ b. 执行migrate生成表结构，该操作会连接到上面的数据库创建�
 /usr/local/bin/echo_supervisord_conf > /etc/supervisord.conf
 ```
 
-`vim /etc/supervisord.conf`
 ```editorconfig
+vim /etc/supervisord.conf
+------------------------------
 # 更改为
 [include]
 files = supervisord.d/*.conf
+------------------------------
 ```
 
 ```bash
