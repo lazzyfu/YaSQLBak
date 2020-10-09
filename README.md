@@ -118,7 +118,7 @@ server {
 }
 ```
 
-### 3.启动Nginx服务
+### 启动Nginx服务
 ```bash
 systemctl enable nginx.service
 systemctl start nginx.service
@@ -129,7 +129,7 @@ systemctl start nginx.service
 >如果访问不了，本地先加下dns解析或者绑定下hosts
 >如果nginx启动不了，检查下错误日志
 
-## 部署后端
+## 部署后端服务
 ### 安装Django项目依赖包
 ```bash
 cd /data/www/yasql/yasql
@@ -137,7 +137,7 @@ cd /data/www/yasql/yasql
 ```
 >最好选择一个干净的系统，最好本地不要有自己安装的mysql包，否则在安装mysql-client时报ln类的错误。当然您也可以ln解决
 
-### 2.安装UWSGI和GUNICORN服务
+### 安装UWSGI和GUNICORN服务
 ```bash
 /venvyasql/bin/pip3.7 install gunicorn -i https://mirrors.aliyun.com/pypi/simple
 /venvyasql/bin/pip3.7 install uwsgi -i https://mirrors.aliyun.com/pypi/simple
