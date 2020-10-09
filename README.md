@@ -8,17 +8,18 @@
   * [部署前端服务](#部署前端服务)
      * [安装Nginx](#安装nginx)
      * [编辑Nginx配置文件](#编辑nginx配置文件)
-     * [3.启动Nginx服务](#3启动nginx服务)
+     * [启动Nginx服务](#启动nginx服务)
      * [访问前台页面](#访问前台页面)
-  * [部署后端](#部署后端)
+  * [部署后端服务](#部署后端服务)
      * [安装Django项目依赖包](#安装django项目依赖包)
-     * [2.安装UWSGI和GUNICORN服务](#2安装uwsgi和gunicorn服务)
+     * [安装UWSGI和GUNICORN服务](#安装uwsgi和gunicorn服务)
      * [收集Django静态文件](#收集django静态文件)
      * [部署Redis服务](#部署redis服务)
      * [初始化库表结构](#初始化库表结构)
      * [部署supervisor服务](#部署supervisor服务)
      * [配置supervisor服务](#配置supervisor服务)
      * [启动服务](#启动服务)
+
 
 ## 说明
 本系统采用的是最简单粗暴的安装方式，适用于有一定基础Linux系统使用的人员
