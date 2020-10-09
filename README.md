@@ -160,10 +160,11 @@ systemctl start redis.service
 
 ### 5.初始化库表结构
 a. 编辑配置文件config.py，分别配置MySQL和Redis
-
+>请按照要求进行修改
 `vim /data/www/yasql/yasql/config.py`
 
 b. 执行migrate生成表结构，该操作会连接到上面的数据库创建表结构
+>如果报数据库无法连接，请检查config.py里面的MySQL配置是否正确
 
 `/venvyasql/bin/python3.7 manage.py migrate`
 
