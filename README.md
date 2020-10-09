@@ -7,14 +7,15 @@
 * 系统：CentOS Linux release 7.6
 * 配置：4核心/8GB内存
 
-## 部署依赖包
+## 安装系统依赖包
 ```bash
 yum -y install epel-release
 
 yum -y install \
-net-tools bzip2-devel gcc gcc-c++ make automake unzip curl curl-devel libffi-devel \
-perl perl-devel expat expat-devel zlib zlib-devel asciidoc xmlto gettext-devel openssl openssl-devel \
-mlocate python-devel openldap-devel readline-devel git mysql-devel p7zip
+net-tools bzip2-devel gcc gcc-c++ make automake unzip curl curl-devel \
+libffi-devel perl perl-devel expat expat-devel zlib zlib-devel asciidoc \
+xmlto gettext-devel openssl openssl-devel mlocate python-devel openldap-devel \
+readline-devel git mysql-devel p7zip
 ```
 
 ## 安装python37
@@ -26,7 +27,7 @@ cd Python-3.7.9/
 make -j 4 && make install
 ```
 
-## 激活python虚拟环境
+## 创建python37虚拟环境
 ```bash
 /usr/local/bin/python3.7 -m pip install --upgrade pip
 /usr/local/bin/pip3.7 install virtualenv -i https://mirrors.aliyun.com/pypi/simple
@@ -52,7 +53,7 @@ git clone https://github.com/lazzyfu/YaSQL.git yasql
 ```
 
 
-## 部署前端
+## 部署前端服务
 ### 1.安装Nginx
 ```bash
 yum -y install nginx                    
@@ -66,7 +67,7 @@ chown -R www. /venvyasql/
 ```editorconfig
 server {
     listen      80;
-    server_name yasql.examplexx.net;
+    server_name yasql.examplexx.net;   # 此处更换为自己的域名
     charset     utf-8;
 
     root /data/www/yasql/yasql-fe/dist;
@@ -113,22 +114,25 @@ systemctl start nginx.service
 ```
 
 ### 4.访问前台页面
-在浏览器访问：http://yasql.examplexx.net/ 
+在浏览器访问：http://yasql.examplexx.net/ （此处应该是你在nginx里面配置的server_name）
 >如果访问不了，本地先加下dns解析或者绑定下hosts
 >如果nginx启动不了，检查下错误日志
 
 ## 部署后端
-### 1.安装python依赖包
+### 1.安装Django项目依赖包
 ```bash
 cd /data/www/yasql/yasql
 /venvyasql/bin/pip3.7 install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 ```
 >最好选择一个干净的系统，最好本地不要有自己安装的mysql包，否则在安装mysql-client时报ln类的错误。当然您也可以ln解决
 
-### 2.安装UWSGI服务
-`/venvyasql/bin/pip3.7 install uwsgi -i https://mirrors.aliyun.com/pypi/simple`
+### 2.安装UWSGI和GUNICORN服务
+```bash
+/venvyasql/bin/pip3.7 install gunicorn -i https://mirrors.aliyun.com/pypi/simple
+/venvyasql/bin/pip3.7 install uwsgi -i https://mirrors.aliyun.com/pypi/simple
+```
 
-### 3.收集django静态文件
+### 3.收集Django静态文件
 ```bash
 cd /data/www/yasql/yasql
 mkdir static
@@ -143,9 +147,11 @@ yum -y install redis
 
 # 更改redis配置
 vim /etc/redis.conf
+----------------------------
 # 配置改为如下，此处设置密码
 bind 127.0.0.1
 requirepass 1234.com
+----------------------------
 
 # 启动redis服务
 systemctl enable redis.service
@@ -153,27 +159,15 @@ systemctl start redis.service
 ```
 
 ### 5.初始化库表结构
-按照要求进行调整
-```bash
-vim /data/www/yasql/yasql/config.py
+a. 编辑配置文件config.py，分别配置MySQL和Redis
 
-# 配置MySQL数据库，库必须先创建，且库的字符集必须为:utf8
-# 存储django程序运行的系统库表等数据
-# 权限：grant all on yasql.* to 'yasql_rw'@'%';
-DB = {
-    'database': 'yasql',
-    'user': 'yasql_rw',
-    'host': '10.10.1.77',
-    'port': 3306,
-    'password': '123.com',
-}
-```
+`vim /data/www/yasql/yasql/config.py`
 
->执行migrate生成表结构，该操作会连接到上面的数据库创建表结构
+b. 执行migrate生成表结构，该操作会连接到上面的数据库创建表结构
 
-/venvyasql/bin/python3.7 manage.py migrate
+`/venvyasql/bin/python3.7 manage.py migrate`
 
-### 5.部署supervisor服务
+### 6.部署supervisor服务
 ```bash
 /usr/local/bin/pip3.7 install supervisor
 /usr/local/bin/echo_supervisord_conf > /etc/supervisord.conf
@@ -192,7 +186,7 @@ cd  /etc/supervisord.d
 ```
 
 
-### 6.配置supervisor服务
+### 7.配置supervisor服务
 vim /etc/supervisord.d/yasql.conf
 ```editorconfig
 [program:yasql-server]
@@ -200,7 +194,7 @@ user=www
 autorestart=true
 environment=DJANGO_SETTINGS_MODULE="yasql.settings"
 directory=/data/www/yasql/yasql
-command=/venvyasql/bin/python3 /venvyasql/bin/gunicorn -w 8 -b 127.0.0.1:8000 yasql:wsgi:application
+command=/venvyasql/bin/python3 /venvyasql/bin/gunicorn -w 8 -b 127.0.0.1:8000 yasql.wsgi:application
 redirect_stderr=true
 stdout_logfile=/data/www/yasql/yasql/logs/yasql-server.log
 
@@ -230,7 +224,7 @@ stopasgroup=true
 priority=1000
 ```
 
-### 7.启动服务
+### 8.启动服务
 #### 编辑config.py
 ```bash
 cd /data/www/yasql/yasql
@@ -244,7 +238,6 @@ mkdir /data/www/yasql/yasql/logs
 # 启动supervisor进程
 /usr/local/bin/supervisord -c /etc/supervisord.conf
 ```
-
 
 
 
