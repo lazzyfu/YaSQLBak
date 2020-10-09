@@ -1,13 +1,36 @@
-# 部署流程
+  * [说明](#说明)
+  * [初始化系统](#初始化系统)
+     * [推荐系统环境](#推荐系统环境)
+     * [安装系统依赖包](#安装系统依赖包)
+     * [安装python37](#安装python37)
+     * [创建python37虚拟环境](#创建python37虚拟环境)
+     * [克隆项目](#克隆项目)
+  * [部署前端服务](#部署前端服务)
+     * [安装Nginx](#安装nginx)
+     * [编辑Nginx配置文件](#编辑nginx配置文件)
+     * [3.启动Nginx服务](#3启动nginx服务)
+     * [访问前台页面](#访问前台页面)
+  * [部署后端](#部署后端)
+     * [安装Django项目依赖包](#安装django项目依赖包)
+     * [2.安装UWSGI和GUNICORN服务](#2安装uwsgi和gunicorn服务)
+     * [收集Django静态文件](#收集django静态文件)
+     * [部署Redis服务](#部署redis服务)
+     * [初始化库表结构](#初始化库表结构)
+     * [部署supervisor服务](#部署supervisor服务)
+     * [配置supervisor服务](#配置supervisor服务)
+     * [启动服务](#启动服务)
+
+## 说明
 本系统采用的是最简单粗暴的安装方式，适用于有一定基础Linux系统使用的人员
 
 请按照下面的文档操作，谢谢...
 
-## 推荐系统环境
+## 初始化系统
+### 推荐系统环境
 * 系统：CentOS Linux release 7.6
 * 配置：4核心/8GB内存
 
-## 安装系统依赖包
+### 安装系统依赖包
 ```bash
 yum -y install epel-release
 
@@ -18,7 +41,7 @@ xmlto gettext-devel openssl openssl-devel mlocate python-devel openldap-devel \
 readline-devel git mysql-devel p7zip
 ```
 
-## 安装python37
+### 安装python37
 ```bash
 wget https://www.python.org/ftp/python/3.7.9/Python-3.7.9.tgz
 tar -zxf Python-3.7.9.tgz
@@ -27,34 +50,22 @@ cd Python-3.7.9/
 make -j 4 && make install
 ```
 
-## 创建python37虚拟环境
+### 创建python37虚拟环境
 ```bash
 /usr/local/bin/python3.7 -m pip install --upgrade pip
 /usr/local/bin/pip3.7 install virtualenv -i https://mirrors.aliyun.com/pypi/simple
 /usr/local/bin/virtualenv /venvyasql --python=/usr/local/bin/python3.7
 ```
 
-## 克隆项目
+### 克隆项目
 ```bash
 mkdir /data/www
 git clone https://github.com/lazzyfu/YaSQL.git yasql
 ```
 
-### 目录结构
-```bash
-[root@localhost yasql]# tree /data/www/yasql/ -L 1
-/data/www/yasql/
-├── LICENSE
-├── README.md
-├── yasql            # 后端文件目录，django程序
-└── yasql-fe         # 前端文件目录，vue程序
-
-2 directories, 2 files
-```
-
 
 ## 部署前端服务
-### 1.安装Nginx
+### 安装Nginx
 ```bash
 yum -y install nginx                    
 useradd www -s /bin/bash
@@ -62,7 +73,7 @@ chown -R www. /data/www/
 chown -R www. /venvyasql/
 ```
 
-### 2.编辑Nginx配置文件
+### 编辑Nginx配置文件
 `vim /etc/nginx/conf.d/yasql.conf`
 ```editorconfig
 server {
@@ -113,13 +124,13 @@ systemctl enable nginx.service
 systemctl start nginx.service
 ```
 
-### 4.访问前台页面
+### 访问前台页面
 在浏览器访问：http://yasql.examplexx.net/ （此处应该是你在nginx里面配置的server_name）
 >如果访问不了，本地先加下dns解析或者绑定下hosts
 >如果nginx启动不了，检查下错误日志
 
 ## 部署后端
-### 1.安装Django项目依赖包
+### 安装Django项目依赖包
 ```bash
 cd /data/www/yasql/yasql
 /venvyasql/bin/pip3.7 install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
@@ -132,14 +143,14 @@ cd /data/www/yasql/yasql
 /venvyasql/bin/pip3.7 install uwsgi -i https://mirrors.aliyun.com/pypi/simple
 ```
 
-### 3.收集Django静态文件
+### 收集Django静态文件
 ```bash
 cd /data/www/yasql/yasql
 mkdir static
 /venvyasql/bin/python3.7 manage.py collectstatic
 ```
 
-### 4.部署Redis服务
+### 部署Redis服务
 >你也可以使用远程redis，本地不需要部署。我为了省事，就部署在本地了
 
 ```bash
@@ -158,9 +169,10 @@ systemctl enable redis.service
 systemctl start redis.service
 ```
 
-### 5.初始化库表结构
+### 初始化库表结构
 a. 编辑配置文件config.py，分别配置MySQL和Redis
 >请按照要求进行修改
+
 `vim /data/www/yasql/yasql/config.py`
 
 b. 执行migrate生成表结构，该操作会连接到上面的数据库创建表结构
@@ -168,7 +180,7 @@ b. 执行migrate生成表结构，该操作会连接到上面的数据库创建�
 
 `/venvyasql/bin/python3.7 manage.py migrate`
 
-### 6.部署supervisor服务
+### 部署supervisor服务
 ```bash
 /usr/local/bin/pip3.7 install supervisor
 /usr/local/bin/echo_supervisord_conf > /etc/supervisord.conf
@@ -187,7 +199,7 @@ cd  /etc/supervisord.d
 ```
 
 
-### 7.配置supervisor服务
+### 配置supervisor服务
 vim /etc/supervisord.d/yasql.conf
 ```editorconfig
 [program:yasql-server]
@@ -225,8 +237,7 @@ stopasgroup=true
 priority=1000
 ```
 
-### 8.启动服务
-#### 编辑config.py
+### 启动服务
 ```bash
 cd /data/www/yasql/yasql
 
