@@ -1,12 +1,12 @@
 <template>
-  <a-card style='margin: 0px' title="SQL工单" :bordered="false">
+  <a-card style="margin: 0px" title="SQL工单" :bordered="false">
     <div class="table-page-search-wrapper">
       <a-form layout="inline" :form="form" @keyup.enter.native="handleSearch">
         <a-row :gutter="[8, 8]">
           <a-col :md="2" :sm="24">
             <a-form-item>
               <a-switch
-                style="margin-bottom:1px"
+                style="margin-bottom: 1px"
                 checked-children="我的工单"
                 un-checked-children="我的工单"
                 @change="onMyChange"
@@ -49,17 +49,17 @@
     </div>
     <a-table
       :columns="table.columns"
-      :rowKey="record => record.id"
+      :rowKey="(record) => record.id"
       :dataSource="table.data"
       :pagination="pagination"
       :loading="loading"
       @change="handleTableChange"
       size="middle"
-      :scroll="{ x: 1100}"
+      :scroll="{ x: 1100 }"
     >
       <span slot="progress" slot-scope="text">
         <div v-for="tag of progress" :key="tag.value">
-          <el-button size="small" round plain :type="tag.color" v-if="tag.value === text">{{text }}</el-button>
+          <el-button size="small" round plain :type="tag.color" v-if="tag.value === text">{{ text }}</el-button>
         </div>
       </span>
       <span slot="applicant" slot-scope="text, record">
@@ -68,54 +68,50 @@
             <span v-if="record.is_hide === 'ON'">
               仅有查看权限且仅工单的提交人、审核人、复核人和DBA可以查看工单内容
             </span>
-            <span v-else>
-              有查看权限的用户可以查看当前工单内容
-            </span>
+            <span v-else> 有查看权限的用户可以查看当前工单内容 </span>
           </div>
           <i class="el-icon-lock table-msg" v-if="record.is_hide === 'ON'" style="color: #52c41a" />
           <i class="el-icon-lock table-msg" v-else />
         </el-tooltip>
-        {{text}}
+        {{ text }}
       </span>
       <span slot="department" slot-scope="text">
         <div v-for="dept of text.split(',')" :key="dept">
-          <span>{{dept}}</span>
+          <span>{{ dept }}</span>
         </div>
       </span>
       <span slot="escape_title" slot-scope="text, record">
-        <router-link
-          :to="{ name: 'view.sqlorders.detail', params: {order_id: record.order_id}}"
-        >{{text}}</router-link>
+        <router-link :to="{ name: 'view.sqlorders.detail', params: { order_id: record.order_id } }">{{
+          text
+        }}</router-link>
         <br />
-        At: {{record.created_at}}
+        At: {{ record.created_at }}
       </span>
       <span slot="host" slot-scope="text, record">
-        {{record.host}}:{{record.port}}
+        {{ record.host }}:{{ record.port }}
         <br />
-        {{record.database}}
+        {{ record.database }}
       </span>
       <template slot="version" slot-scope="text">
         <span v-if="text">
-          <router-link
-            :to="{ name: 'view.sqlorders.version.view', params: {version: text}}"
-          >{{text}}</router-link>
+          <router-link :to="{ name: 'view.sqlorders.version.view', params: { version: text } }">{{ text }}</router-link>
         </span>
         <span v-else>-</span>
       </template>
       <span slot="auditor" slot-scope="text">
-        <div v-for="tag of JSON.parse(text)" :key="tag.user+tag.status">
-          <span :style="{color: tag.status === 0 ? '#f56c6c': '#67c23a'}">
-            <span v-if="tag.display_name">{{tag.display_name}}</span>
-            <span v-else>{{tag.user}}</span>
+        <div v-for="tag of JSON.parse(text)" :key="tag.user + tag.status">
+          <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
+            <span v-if="tag.display_name">{{ tag.display_name }}</span>
+            <span v-else>{{ tag.user }}</span>
           </span>
         </div>
       </span>
 
       <span slot="reviewer" slot-scope="text">
-        <div v-for="tag of JSON.parse(text)" :key="`reviewer_`+tag.user+tag.status">
-          <span :style="{color: tag.status === 0 ? '#f56c6c': '#67c23a'}">
-            <span v-if="tag.display_name">{{tag.display_name}}</span>
-            <span v-else>{{tag.user}}</span>
+        <div v-for="tag of JSON.parse(text)" :key="`reviewer_` + tag.user + tag.status">
+          <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
+            <span v-if="tag.display_name">{{ tag.display_name }}</span>
+            <span v-else>{{ tag.user }}</span>
           </span>
         </div>
       </span>
@@ -143,27 +139,27 @@ export default {
         pageSize: 10,
         total: 0,
         pageSizeOptions: ['5', '10', '20'],
-        showSizeChanger: true
+        showSizeChanger: true,
       },
       filter: {},
       filterDisabledBtn: ['已勾住', '未通过', '已关闭'],
       table: {
         columns: null,
-        data: null
+        data: null,
       },
       decorator: {
         env: ['env', { rules: [{ required: false }] }],
         progress: ['progress', { rules: [{ required: false }] }],
         search: ['search', { rules: [{ required: false }] }],
-        created_at: ['created_at', { rules: [{ required: false }] }]
+        created_at: ['created_at', { rules: [{ required: false }] }],
       },
-      form: this.$form.createForm(this)
+      form: this.$form.createForm(this),
     }
   },
   methods: {
     // 获取工单环境
     getEnvs() {
-      getDbEnvironment.then(response => {
+      getDbEnvironment.then((response) => {
         this.envs = response.data
       })
     },
@@ -190,18 +186,15 @@ export default {
         page_size: this.pagination.pageSize,
         page: this.pagination.current,
         username: this.username,
-        ...this.filters
+        ...this.filters,
       }
       this.loading = true
       getSqlOrdersList(params)
-        .then(response => {
+        .then((response) => {
           this.pagination.total = response.count
           this.loading = false
           this.table.columns = response.results.columns
           this.table.data = response.results.data
-        })
-        .catch(error => {
-          console.log(error)
         })
         .finally(() => {
           this.loading = false
@@ -219,7 +212,7 @@ export default {
           search: values['search'],
           env: values['env'],
           start_created_at: values['created_at'] ? moment(values['created_at'][0]).format('YYYY-MM-DD') : undefined,
-          end_created_at: values['created_at'] ? moment(values['created_at'][1]).format('YYYY-MM-DD') : undefined
+          end_created_at: values['created_at'] ? moment(values['created_at'][1]).format('YYYY-MM-DD') : undefined,
         }
         this.pagination.current = 1
         this.fetchData()
@@ -227,7 +220,7 @@ export default {
     },
     resetForm() {
       this.form.resetFields()
-    }
+    },
   },
   destroyed() {
     // 销毁timer
@@ -243,7 +236,7 @@ export default {
     this.timer = setInterval(() => {
       setTimeout(this.fetchData(), 0)
     }, 30000)
-  }
+  },
 }
 </script>
 <style>

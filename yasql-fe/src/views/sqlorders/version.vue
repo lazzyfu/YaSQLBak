@@ -1,12 +1,12 @@
 <template>
   <a-card title="上线版本号">
     <div class="table-page-search-wrapper">
-      <a-row :gutter="[8,16]">
+      <a-row :gutter="[8, 16]">
         <a-col :span="10">
           <a-button icon="file-add" @click="addVersion()">新建</a-button>
         </a-col>
         <a-col :span="14">
-          <a-row :gutter="[8,16]">
+          <a-row :gutter="[8, 16]">
             <a-form layout="inline" :form="form" @keyup.enter.native="handleSearch">
               <a-col :span="8">
                 <a-form-item>
@@ -26,7 +26,7 @@
     </div>
     <a-table
       :columns="table.columns"
-      :rowKey="record => record.id"
+      :rowKey="(record) => record.id"
       :dataSource="table.data"
       :pagination="pagination"
       :loading="loading"
@@ -34,9 +34,9 @@
       size="middle"
     >
       <template slot="id" slot-scope="text, record">
-        <router-link
-          :to="{ name: 'view.sqlorders.version.view', params: {version: record.version}}"
-        >详情</router-link>
+        <router-link :to="{ name: 'view.sqlorders.version.view', params: { version: record.version } }"
+          >详情</router-link
+        >
       </template>
       <template v-for="col in ['version', 'expire_time']" :slot="col" slot-scope="text, record">
         <div :key="col">
@@ -44,7 +44,7 @@
             v-if="record.editable"
             style="margin: -5px 0"
             :value="text"
-            @change="e => handleChange(e.target.value, record.key, col)"
+            @change="(e) => handleChange(e.target.value, record.key, col)"
           />
           <template v-else>{{ text }}</template>
         </div>
@@ -74,14 +74,7 @@
         <a-button key="back" @click="handleCancel">关闭</a-button>
         <a-button key="submit" type="primary" @click="handleVersionCommit">提交</a-button>
       </template>
-      <el-form
-        :model="ruleForm"
-        :rules="rules"
-        ref="ruleForm"
-        label-width="80px"
-        size="small"
-        class="demo-ruleForm"
-      >
+      <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="80px" size="small" class="demo-ruleForm">
         <el-form-item label="版本名称" prop="version">
           <el-input v-model="ruleForm.version"></el-input>
         </el-form-item>
@@ -100,12 +93,7 @@
 </template>
 
 <script>
-import {
-  listReleaseVersions,
-  createReleaseVersions,
-  updateReleaseVersions,
-  deleteReleaseVersions,
-} from "@/api/sql";
+import { listReleaseVersions, createReleaseVersions, updateReleaseVersions, deleteReleaseVersions } from '@/api/sql'
 
 export default {
   data() {
@@ -117,64 +105,64 @@ export default {
         columns: [],
         data: [],
       },
-      editingKey: "", // 控制每次只能编辑一行，其他的编辑按钮自动禁用
+      editingKey: '', // 控制每次只能编辑一行，其他的编辑按钮自动禁用
       pagination: {
         current: 1,
         pageSize: 10,
         total: 0,
-        pageSizeOptions: ["10", "20"],
+        pageSizeOptions: ['10', '20'],
         showSizeChanger: true,
       },
       decorator: {
-        search: ["search", { rules: [{ required: false }] }],
+        search: ['search', { rules: [{ required: false }] }],
       },
       form: this.$form.createForm(this),
       // modal form
       ruleForm: {
-        version: "",
-        expire_time: "",
+        version: '',
+        expire_time: '',
       },
       rules: {
         version: [
-          { required: true, message: "请输入版本号", trigger: "blur" },
+          { required: true, message: '请输入版本号', trigger: 'blur' },
           {
             min: 3,
             max: 24,
-            message: "长度在 3 到 24 个字符",
-            trigger: "blur",
+            message: '长度在 3 到 24 个字符',
+            trigger: 'blur',
           },
         ],
         expire_time: [
           {
             required: true,
-            message: "请选择截止日期",
-            trigger: "change",
+            message: '请选择截止日期',
+            trigger: 'change',
           },
         ],
       },
-    };
+    }
   },
   methods: {
     handleSearch(e) {
-      e.preventDefault();
+      e.preventDefault()
       this.form.validateFields((error, values) => {
         if (error) {
-          return;
+          return
         }
         this.filters = {
-          search: values["search"],
-        };
-        this.pagination.current = 1;
-        this.fetchData();
-      });
+          search: values['search'],
+        }
+        this.pagination.current = 1
+        this.fetchData()
+      })
     },
     resetForm() {
-      this.form.resetFields();
+      this.form.resetFields()
     },
     handleTableChange(pager) {
-      this.pagination.current = pager.current;
-      this.pagination.pageSize = pager.pageSize;
-      this.fetchData();
+      this.pagination.current = pager.current
+      this.pagination.pageSize = pager.pageSize
+      this.fetchData()
     },
     // 获取上线版本号
     fetchData() {
@@ -182,128 +170,131 @@ export default {
         page_size: this.pagination.pageSize,
         page: this.pagination.current,
         ...this.filters,
-      };
-      this.loading = true;
+      }
+      this.loading = true
       listReleaseVersions(params)
         .then((response) => {
-          this.pagination.total = response.count;
-          this.loading = false;
-          this.table.columns = response.results.columns;
-          this.table.data = response.results.data;
-        })
-        .catch((error) => {
-          this.$message.error(error);
+          this.pagination.total = response.count
+          this.loading = false
+          this.table.columns = response.results.columns
+          this.table.data = response.results.data
         })
         .finally(() => {
-          this.loading = false;
-        });
+          this.loading = false
+        })
     },
     // 删除确认
     DeleteConfirm(id) {
-      const _this = this;
+      const _this = this
       this.$confirm({
-        title: "警告",
-        content: "你确定删除？",
-        okText: "Yes",
-        okType: "danger",
-        cancelText: "No",
+        title: '警告',
+        content: '你确定删除？',
+        okText: 'Yes',
+        okType: 'danger',
+        cancelText: 'No',
         onOk() {
-          deleteReleaseVersions(id).then((response) => {
-            _this.$message.info(response.message);
-            _this.fetchData();
-          });
+          deleteReleaseVersions(id)
+            .then((response) => {
+              _this.$message.info(response.message)
+              _this.fetchData()
+            })
         },
         onCancel() {},
-      });
+      })
     },
     // 编辑
     handleChange(value, key, column) {
-      const newData = [...this.table.data];
-      const target = newData.filter((item) => key === item.key)[0];
+      const newData = [...this.table.data]
+      const target = newData.filter((item) => key === item.key)[0]
       if (target) {
-        target[column] = value;
-        this.table.data = newData;
+        target[column] = value
+        this.table.data = newData
       }
     },
     // 编辑状态中的input值
     edit(key) {
-      const newData = [...this.table.data];
-      const target = newData.filter((item) => key === item.key)[0];
-      this.editingKey = key;
+      const newData = [...this.table.data]
+      const target = newData.filter((item) => key === item.key)[0]
+      this.editingKey = key
       if (target) {
-        target.editable = true;
-        this.table.data = newData;
+        target.editable = true
+        this.table.data = newData
       }
     },
     // 编辑确认
     save(key) {
-      const newData = [...this.table.data];
-      const target = newData.filter((item) => key === item.key)[0];
+      const newData = [...this.table.data]
+      const target = newData.filter((item) => key === item.key)[0]
       if (target) {
         // 删除editable=true这条
-        delete target.editable;
+        delete target.editable
         // 更新到表格实现实时渲染
-        this.table.data = newData;
+        this.table.data = newData
         // 提交数据到后台
-        updateReleaseVersions(target).then((response) => {
-          if (response.code === "0000") {
-            this.$message.info(response.message);
-          } else {
-            this.$message.error(response.message);
-          }
-          this.fetchData();
-        });
+        updateReleaseVersions(target)
+          .then((response) => {
+            if (response.code === '0000') {
+              this.$message.info(response.message)
+            } else {
+              this.$message.error(response.message)
+            }
+            this.fetchData()
+          })
       }
-      this.editingKey = "";
+      this.editingKey = ''
     },
     // 确认取消
     cancel(key) {
-      const newData = [...this.table.data];
-      const target = newData.filter((item) => key === item.key)[0];
-      this.editingKey = "";
+      const newData = [...this.table.data]
+      const target = newData.filter((item) => key === item.key)[0]
+      this.editingKey = ''
       if (target) {
-        delete target.editable;
-        this.table.data = newData;
+        delete target.editable
+        this.table.data = newData
       }
     },
     // 新建版本
     addVersion() {
-      this.showModal();
+      this.showModal()
     },
     // 模态框
     showModal() {
-      this.visible = true;
+      this.visible = true
     },
     handleCancel() {
-      this.visible = false;
-      this.$refs["ruleForm"].resetFields();
+      this.visible = false
+      this.$refs['ruleForm'].resetFields()
     },
     handleVersionCommit(e) {
-      this.$refs["ruleForm"].validate((valid) => {
+      this.$refs['ruleForm'].validate((valid) => {
         if (valid) {
           const commitData = {
             username: this.$store.getters.userInfo.username,
             ...this.ruleForm,
-          };
-          createReleaseVersions(commitData).then((response) => {
-            if (response.code === "0000") {
-              this.$message.info(response.message);
-              this.visible = false;
-              this.fetchData();
-            } else {
-              this.$message.error(response.message);
-            }
-          });
+          }
+          createReleaseVersions(commitData)
+            .then((response) => {
+              if (response.code === '0000') {
+                this.$message.info(response.message)
+                this.visible = false
+                this.fetchData()
+              } else {
+                this.$message.error(response.message)
+              }
+            })
+            .finally(() => {
+              this.visible = false
+            })
         } else {
-          return false;
+          return false
         }
-      });
+      })
     },
   },
   mounted() {
-    this.fetchData();
+    this.fetchData()
   },
-};
+}
 </script>
 
 <style>

@@ -9,17 +9,17 @@
           </a>
         </div>
         <div class="desc">
-          一款简单的MySQL/TiDB数据库审核执行平台
+          简单的MySQL/TiDB数据库审核执行平台
         </div>
       </div>
 
       <router-view />
 
-      <div class="footer">
+      <!-- <div class="footer">
         <div class="links">
           <a href="_self">帮助</a>
         </div>
-      </div>
+      </div> -->
     </div>
   </div>
 </template>

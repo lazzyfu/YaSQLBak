@@ -3,18 +3,18 @@
     <page-header-wrapper v-if="orderDetail" :title="orderDetail.title">
       <template v-slot:content>
         <a-descriptions size="small" :column="isMobile ? 1 : 2">
-          <a-descriptions-item label="申请人">{{orderDetail.applicant}}</a-descriptions-item>
-          <a-descriptions-item label="备注">{{orderDetail.remark}}</a-descriptions-item>
+          <a-descriptions-item label="申请人">{{ orderDetail.applicant }}</a-descriptions-item>
+          <a-descriptions-item label="备注">{{ orderDetail.remark }}</a-descriptions-item>
           <a-descriptions-item label="工单环境">
-            <span style="color: red">{{orderDetail.env_id}}</span>
+            <span style="color: red">{{ orderDetail.env_id }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="工单类型">{{orderDetail.sql_type}}</a-descriptions-item>
-          <a-descriptions-item label="DB类型">{{orderDetail.display_rds_category}}</a-descriptions-item>
-          <a-descriptions-item label="DB实例">{{orderDetail.host+':'+orderDetail.port}}</a-descriptions-item>
+          <a-descriptions-item label="工单类型">{{ orderDetail.sql_type }}</a-descriptions-item>
+          <a-descriptions-item label="DB类型">{{ orderDetail.display_rds_category }}</a-descriptions-item>
+          <a-descriptions-item label="DB实例">{{ orderDetail.host + ':' + orderDetail.port }}</a-descriptions-item>
           <a-descriptions-item label="库名">
-            <span style="color: blue">{{orderDetail.database}}</span>
+            <span style="color: blue">{{ orderDetail.database }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="创建时间">{{orderDetail.created_at}}</a-descriptions-item>
+          <a-descriptions-item label="创建时间">{{ orderDetail.created_at }}</a-descriptions-item>
           <a-descriptions-item label="需求">{{ orderDetail.demand }}</a-descriptions-item>
         </a-descriptions>
       </template>
@@ -32,39 +32,27 @@
 
       <!-- actions -->
       <template v-slot:extra>
-        <a-button-group style="margin-right: 4px;">
-          <a-button
-            type="dashed"
-            @click="showModal"
-            :disabled="btnStatus.btnDisabled"
-            icon="retweet"
-          >
-            {{
-            orderDetail.progress | btnTitle
-            }}
+        <a-button-group style="margin-right: 4px">
+          <a-button type="dashed" @click="showModal" :disabled="btnStatus.btnDisabled" icon="retweet">
+            {{ orderDetail.progress | btnTitle }}
           </a-button>
 
           <a-button @click="showHookModal" v-if="orderDetail.progress === '已复核'" icon="link">钩子</a-button>
 
-          <a-button
-            type="dashed"
-            @click="showCloseModal"
-            :disabled="btnStatus.closeDisabled"
-            icon="close-circle"
-          >关闭工单</a-button>
+          <a-button type="dashed" @click="showCloseModal" :disabled="btnStatus.closeDisabled" icon="close-circle"
+            >关闭工单</a-button
+          >
 
-          <a-button
-            type="dashed"
-            @click="generateSqlOrdersTasks"
-            :loading="executeLoading"
-            icon="thunderbolt"
-          >执行工单</a-button>
+          <a-button type="dashed" @click="generateSqlOrdersTasks" :loading="executeLoading" icon="thunderbolt"
+            >执行工单</a-button
+          >
           <a-button
             type="dashed"
             v-if="['处理中', '已完成', '已复核', '已勾住'].includes(orderDetail.progress)"
             @click="showTasksDrawer"
             icon="eye"
-          >子任务详情</a-button>
+            >子任务详情</a-button
+          >
           <a-button type="dashed" @click="refresh" :loading="loading" icon="sync">刷新</a-button>
         </a-button-group>
         <!-- 其他操作model -->
@@ -73,9 +61,7 @@
           <template slot="footer">
             <a-button key="back" @click="handleCancel">{{ confirmBtnTips.cancelText }}</a-button>
             <a-button key="submit" type="primary" :loading="loading" @click="handleOk">
-              {{
-              confirmBtnTips.okText
-              }}
+              {{ confirmBtnTips.okText }}
             </a-button>
           </template>
         </a-modal>
@@ -95,12 +81,7 @@
             </el-form-item>
 
             <el-form-item label="当前库">
-              <el-input
-                v-model="ruleForm.current_database"
-                readonly
-                placeholder="请输入需求描述"
-                style="width: 95%"
-              />
+              <el-input v-model="ruleForm.current_database" readonly placeholder="请输入需求描述" style="width: 95%" />
             </el-form-item>
 
             <el-form-item label="目标环境">
@@ -343,9 +324,10 @@ export default {
       this.visibleDrawer = false
     },
     getOrderDetail() {
-      getSqlOrdersDetail(this.$route.params.order_id).then((response) => {
-        this.orderDetail = response.data
-      })
+      getSqlOrdersDetail(this.$route.params.order_id)
+        .then((response) => {
+          this.orderDetail = response.data
+        })
     },
     // 变更环境，获取schemas
     changeEnvs(value) {
@@ -360,7 +342,7 @@ export default {
       })
     },
     onCmReady(cm) {
-      cm.setSize('height', `600px`)
+      cm.setSize('height', `550px`)
       cm.setValue(this.orderDetail.contents)
     },
     refresh() {
@@ -390,9 +372,6 @@ export default {
             this.$message.error(JSON.stringify(response.message))
           }
         })
-        .catch((error) => {
-          this.$message.error(error)
-        })
         .finally(() => {
           this.hideModal()
           this.refresh()
@@ -408,9 +387,6 @@ export default {
           } else {
             this.$message.error(response.message)
           }
-        })
-        .catch((error) => {
-          this.$message.error(error)
         })
         .finally(() => {
           this.executeLoading = false
@@ -545,7 +521,6 @@ export default {
 <style lang="less" scoped>
 .CodeMirror {
   border: 2px solid #eee;
-  font-size: 12px;
   font-family: 'JetBrains Mono NL', Menlo, Monaco, Consolas, 'Lucida Console', 'Courier New', monospace;
   min-height: 100px;
   /* 支持上下拉伸 */

@@ -32,16 +32,12 @@
     </a-row>
     <el-divider></el-divider>
     <div class="table-page-search-wrapper">
-      <a-row :gutter="[8,16]">
+      <a-row :gutter="[8, 16]">
         <a-form laout="inline" :form="form" @keyup.enter.native="handleSearch">
           <a-col :span="4">
             <a-form-item>
               <a-select placeholder="状态" v-decorator="decorator['progress']">
-                <a-select-option
-                  v-for="s in progress"
-                  :key="s.key"
-                  :value="s.key"
-                >{{ s.value }}</a-select-option>
+                <a-select-option v-for="s in progress" :key="s.key" :value="s.key">{{ s.value }}</a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
@@ -64,7 +60,7 @@
 
     <a-table
       :columns="table.columns"
-      :rowKey="record => record.id"
+      :rowKey="(record) => record.id"
       :dataSource="table.data"
       :pagination="pagination"
       :loading="loading"
@@ -73,21 +69,21 @@
     >
       <!-- 设置序号 -->
       <span slot="num" slot-scope="text, record, index">
-        <span v-text="index+1"></span>
+        <span v-text="index + 1"></span>
       </span>
       <!-- 格式化显示SQL -->
       <span slot="sql" slot-scope="text">
         <a-tooltip placement="topLeft">
-          <template slot="title">{{text}}</template>
-          <span href="#">{{text}}</span>
+          <template slot="title">{{ text }}</template>
+          <span href="#">{{ text }}</span>
         </a-tooltip>
       </span>
       <span slot="progress" slot-scope="text">
-        <span v-if="text === '处理中'" style="color: orange">{{text}}</span>
-        <span v-else-if="text === '已完成'" style="color: green">{{text}}</span>
-        <span v-else-if="text === '失败'" style="color: red">{{text}}</span>
-        <span v-else-if="text === '暂停'" style="color: blue">{{text}}</span>
-        <span v-else>{{text}}</span>
+        <span v-if="text === '处理中'" style="color: orange">{{ text }}</span>
+        <span v-else-if="text === '已完成'" style="color: green">{{ text }}</span>
+        <span v-else-if="text === '失败'" style="color: red">{{ text }}</span>
+        <span v-else-if="text === '暂停'" style="color: blue">{{ text }}</span>
+        <span v-else>{{ text }}</span>
       </span>
       <span slot="result" slot-scope="text, record">
         <a-icon type="eye" @click="showModal(record)" />
@@ -99,14 +95,15 @@
         <template slot="footer">
           <a-button key="back" @click="handleCancel">Close</a-button>
         </template>
-
-        <div>
-          <h5>-> 执行日志</h5>
-          <codemirror ref="myCm2" v-model="code2" :options="cmOptions" @ready="onCmReady2"></codemirror>
-        </div>
-        <div style="margin-top: 15px">
-          <h5>-> 回滚SQL</h5>
-          <codemirror ref="myCm1" v-model="code1" :options="cmOptions" @ready="onCmReady1"></codemirror>
+        <div v-loading="resultLoading" element-loading-text="玩命加载中..." element-loading-spinner="el-icon-loading">
+          <div>
+            <h5>-> 执行日志</h5>
+            <codemirror ref="myCm2" v-model="code2" :options="cmOptions" @ready="onCmReady2"></codemirror>
+          </div>
+          <div style="margin-top: 15px">
+            <h5>-> 回滚SQL</h5>
+            <codemirror ref="myCm1" v-model="code1" :options="cmOptions" @ready="onCmReady1"></codemirror>
+          </div>
         </div>
       </a-modal>
     </div>
@@ -114,18 +111,14 @@
 </template>
 
 <script>
-import "codemirror/mode/sql/sql.js";
-import "codemirror/addon/display/autorefresh";
+import 'codemirror/mode/sql/sql.js'
+import 'codemirror/addon/display/autorefresh'
 
-import {
-  getSqlOrdersTasksPreviewList,
-  getTasksResult,
-  getSqlOrdersTaskId,
-} from "@/api/sql";
-import { taskProgress } from "@/utils/sql";
+import { getSqlOrdersTasksPreviewList, getTasksResult, getSqlOrdersTaskId } from '@/api/sql'
+import { taskProgress } from '@/utils/sql'
 
 export default {
-  name: "tasks-list",
+  name: 'tasks-list',
   props: {
     order_id: Number,
   },
@@ -133,7 +126,8 @@ export default {
     return {
       modalLoading: false,
       modalVisible: false,
-      timer: "",
+      resultLoading: false,
+      timer: '',
       loading: false,
       progress: taskProgress,
       statistics: {
@@ -150,20 +144,17 @@ export default {
         current: 1,
         pageSize: 10,
         total: 0,
-        pageSizeOptions: ["10", "20"],
+        pageSizeOptions: ['10', '20'],
         showSizeChanger: true,
       },
       decorator: {
-        progress: [
-          "progress",
-          { rules: [{ required: false }] },
-        ],
-        search: ["search", { rules: [{ required: false }] }],
+        progress: ['progress', { rules: [{ required: false }] }],
+        search: ['search', { rules: [{ required: false }] }],
       },
-      code1: "",
-      code2: "",
+      code1: '',
+      code2: '',
       cmOptions: {
-        mode: "text/x-mysql",
+        mode: 'text/x-mysql',
         indentUnit: 2,
         tabSize: 2,
         indentWithTabs: true,
@@ -175,117 +166,112 @@ export default {
         autofocus: false,
       },
       form: this.$form.createForm(this),
-    };
+    }
   },
   methods: {
     handleTableChange(pager) {
-      this.pagination.current = pager.current;
-      this.pagination.pageSize = pager.pageSize;
-      this.fetchData();
+      this.pagination.current = pager.current
+      this.pagination.pageSize = pager.pageSize
+      this.fetchData()
     },
     fetchData() {
       getSqlOrdersTaskId({ order_id: this.order_id }).then((response) => {
-        this.task_id = response.data;
+        this.task_id = response.data
         const params = {
           page_size: this.pagination.pageSize,
           page: this.pagination.current,
           task_id: this.task_id,
           ...this.filters,
-        };
-        this.loading = true;
+        }
+        this.loading = true
         getSqlOrdersTasksPreviewList(params)
           .then((response) => {
-            this.pagination.total = response.count;
-            this.loading = false;
-            this.table.columns = response.results.columns;
-            this.table.data = response.results.data.data;
+            this.pagination.total = response.count
+            this.loading = false
+            this.table.columns = response.results.columns
+            this.table.data = response.results.data.data
 
-            this.statistics.total = response.results.data.total;
-            this.statistics.progress_0 = response.results.data.progress_0;
-            this.statistics.progress_1 = response.results.data.progress_1;
-            this.statistics.progress_3 = response.results.data.progress_3;
-          })
-          .catch((error) => {
-            this.$message.error(error.response.data.detail, 5);
-            setTimeout(() => {
-              this.$router.push({ name: "view.sqlorders.list" });
-            }, 5000);
+            this.statistics.total = response.results.data.total
+            this.statistics.progress_0 = response.results.data.progress_0
+            this.statistics.progress_1 = response.results.data.progress_1
+            this.statistics.progress_3 = response.results.data.progress_3
           })
           .finally(() => {
-            this.loading = false;
-          });
-      });
+            this.loading = false
+          })
+      })
     },
     handleSearch(e) {
-      e.preventDefault();
+      e.preventDefault()
       this.form.validateFields((error, values) => {
         if (error) {
-          return;
+          return
         }
         this.filters = {
-          progress: values["progress"],
-          search: values["search"],
-        };
-        this.pagination.current = 1;
-        this.fetchData();
-      });
+          progress: values['progress'],
+          search: values['search'],
+        }
+        this.pagination.current = 1
+        this.fetchData()
+      })
     },
     resetForm() {
-      this.form.resetFields();
+      this.form.resetFields()
     },
     getTResult(value) {
       getTasksResult(value.id)
         .then((response) => {
-          this.codemirror1.setValue(response.data.rollback_sql);
-          this.codemirror2.setValue(response.data.execute_log);
+          this.codemirror1.setValue(response.data.rollback_sql)
+          this.codemirror2.setValue(response.data.execute_log)
           setTimeout(() => {
-            this.resultLoading = false;
-          }, 500);
+            this.resultLoading = false
+          }, 1000)
         })
         .catch((err) => {
           setTimeout(() => {
-            this.resultLoading = false;
-          }, 500);
-        });
+            this.resultLoading = false
+          }, 1000)
+        })
     },
     showModal(value) {
-      this.modalVisible = true;
-      this.getTResult(value);
+      this.modalVisible = true
+      this.resultLoading = true
+      this.getTResult(value)
     },
     handleCancel(e) {
-      this.modalVisible = false;
+      this.modalVisible = false
     },
     onCmReady1(cm) {
-      cm.setSize("height", `250px`);
+      cm.setSize('height', `250px`)
     },
     onCmReady2(cm) {
-      cm.setSize("height", `250px`);
+      cm.setSize('height', `250px`)
     },
   },
 
   computed: {
     codemirror1() {
-      return this.$refs.myCm1.codemirror;
+      return this.$refs.myCm1.codemirror
     },
     codemirror2() {
-      return this.$refs.myCm2.codemirror;
+      return this.$refs.myCm2.codemirror
     },
   },
   destroyed() {
     // 销毁timer
-    clearInterval(this.timer);
+    clearInterval(this.timer)
   },
   mounted() {
-    this.fetchData();
+    this.fetchData()
     // 每10s刷新一次接口
     if (this.timer) {
-      clearInterval(this.timer);
+      clearInterval(this.timer)
     }
     this.timer = setInterval(() => {
-      setTimeout(this.fetchData(), 0);
-    }, 10000);
+      setTimeout(this.fetchData(), 0)
+    }, 10000)
   },
-};
+}
 </script>
 
 <style>

@@ -7,7 +7,6 @@ from sqlorders import views
 
 urlpatterns = [
     # SQL工单
-    path('versions', views.GetReleaseVersions.as_view(), name='v1.sqlorders.release-versions'),
     path('envs', views.GetDBEnvironment.as_view(), name='v1.sqlorders.db-environment'),
     path('schemas', views.GetDbSchemas.as_view(), name='v1.sqlorders.db-schemas'),
     path('incep/syntaxcheck', views.IncepSyntaxCheckView.as_view(), name='v1.sqlorders.incep.syntaxcheck'),

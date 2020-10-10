@@ -9,12 +9,12 @@ from users.models import RolePermissions
 系统默认的权限：
 can_commit_orders: 提交工单的权限
 can_audit_orders: 审核工单的权限
-can_view_orders：查看工单的权限
-can_execute_orders：执行工单的权限
+can_view_orders: 查看工单的权限
+can_execute_orders: 执行工单的权限
 can_view_versions: 查看上线版本的权限
-can_create_versions：创建上线版本的权限
-can_update_versions：更新上线版本的权限
-can_delete_versions：删除上线版本的权限
+can_create_versions: 创建上线版本的权限
+can_update_versions: 更新上线版本的权限
+can_delete_versions: 删除上线版本的权限
 """
 
 

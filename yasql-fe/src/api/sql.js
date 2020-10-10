@@ -144,43 +144,42 @@ export const downloadExportFiles = params =>
     responseType: 'blob'
   })
 
-
 // 获取上线版本列表 - 管理使用
 export const listReleaseVersions = params =>
   axios.request({
-    url: "/sqlorders/versions/list",
-    method: "get",
+    url: '/sqlorders/versions/list',
+    method: 'get',
     params: params
-  });
+  })
 
 // 新建版本
 export const createReleaseVersions = params =>
   axios.request({
-    url: "/sqlorders/versions/create",
-    method: "post",
+    url: '/sqlorders/versions/create',
+    method: 'post',
     data: params
-  });
+  })
 
 // 更新上线版本信息
 export const updateReleaseVersions = params =>
   axios.request({
     url: `/sqlorders/versions/update/${params.key}`,
-    method: "put",
+    method: 'put',
     data: params
-  });
+  })
 
 // 删除版本
 export const deleteReleaseVersions = params =>
   axios.request({
     url: `/sqlorders/versions/delete/${params}`,
-    method: "delete",
+    method: 'delete',
     data: params
-  });
+  })
 
 // 获取指定版本内工单在所有环境的进度
 export const viewReleaseVersions = params =>
   axios.request({
     url: `/sqlorders/versions/view/${params}`,
-    method: "get",
+    method: 'get',
     params: params
-  });
+  })

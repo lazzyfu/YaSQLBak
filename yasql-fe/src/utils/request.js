@@ -20,7 +20,17 @@ const errorHandler = error => {
     // 从 localstorage 获取 token
     const token = storage.get(ACCESS_TOKEN)
     if (error.response.status === 403) {
-      redirect({ name: '403' })
+      notification.error({
+        message: '403',
+        description: error.response.data.detail
+      })
+      // redirect({ name: '403' })
+    }
+    if (error.response.status === 404) {
+      redirect({ name: '404' })
+    }
+    if (error.response.status === 500) {
+      redirect({ name: '500' })
     }
     if (error.response.status === 401) {
       notification.error({
@@ -56,11 +66,9 @@ request.interceptors.request.use(
 )
 
 // 响应拦截
-request.interceptors.response.use(
-  response => {
-    return response.data
-  }, errorHandler
-)
+request.interceptors.response.use(response => {
+  return response.data
+}, errorHandler)
 
 const installer = {
   vm: {},

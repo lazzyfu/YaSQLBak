@@ -22,17 +22,6 @@ from sqlorders import models, serializers
 from sqlorders.filters import SqlOrderListFilter, GetTasksListFilter
 
 
-class GetReleaseVersions(ListAPIView):
-    queryset = models.ReleaseVersions.objects.all()
-    serializer_class = serializers.ReleaseVersionsSerializer
-
-    def get(self, request, *args, **kwargs):
-        before_30_days = (timezone.now() - datetime.timedelta(days=30))
-        queryset = self.get_queryset().filter(expire_time__gte=before_30_days).order_by('-created_at')
-        serializer = self.get_serializer(queryset, many=True)
-        return JsonResponseV1(data=serializer.data)
-
-
 class GetDBEnvironment(ListAPIView):
     queryset = models.DbEnvironment.objects.all()
     serializer_class = serializers.DbEnvironmentSerializer
@@ -81,6 +70,7 @@ class IncepSyntaxCheckView(APIView):
 
 
 class SqlOrdersCommit(GenericAPIView):
+    permission_classes = (permissions.CanCommitOrdersPermission,)
     serializer_class = serializers.SqlOrdersCommitSerializer
 
     def post(self, request, *args, **kwargs):
@@ -93,7 +83,7 @@ class SqlOrdersCommit(GenericAPIView):
 
 
 class SqlOrdersList(ListAPIView):
-    # permission_classes = (permissions.CanViewOrdersPermission,)
+    permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrders.objects.all()
     serializer_class = serializers.SqlOrdersListSerializer
     pagination_class = Pagination
@@ -126,7 +116,7 @@ class SqlOrdersList(ListAPIView):
 
 class SqlOrdersDetail(ListAPIView):
     """SQL工单详情"""
-    # permission_classes = (permissions.CanViewOrdersPermission,)
+    permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrders.objects.all()
     serializer_class = serializers.SqlOrderDetailSerializer
     lookup_field = 'order_id'
@@ -139,6 +129,7 @@ class SqlOrdersDetail(ListAPIView):
 
 class OpSqlOrderView(ViewSet):
     """更新SQL工单状态，如：审核，关闭等"""
+    permission_classes = (permissions.CanViewOrdersPermission,)
 
     def get_obj(self, pk):
         try:
@@ -186,6 +177,8 @@ class OpSqlOrderView(ViewSet):
 
 
 class GenerateTasksView(APIView):
+    permission_classes = (permissions.CanExecuteOrdersPermission,)
+
     def post(self, request, *args, **kwargs):
         serializer = serializers.GenerateSqlOrdersTasksSerializer(data=request.data)
 
@@ -204,6 +197,7 @@ class GetTaskIdView(APIView):
 
 
 class GetTasksPreviewView(ListAPIView):
+    permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrdersExecuteTasks.objects.all()
     serializer_class = serializers.SqlOrdersTasksListSerializer
     pagination_class = Pagination
@@ -254,6 +248,7 @@ class GetTasksPreviewView(ListAPIView):
 
 
 class GetTasksListView(ListAPIView):
+    permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrdersExecuteTasks.objects.all()
     serializer_class = serializers.SqlOrdersTasksListSerializer
     pagination_class = Pagination
@@ -298,6 +293,8 @@ class GetTasksListView(ListAPIView):
 
 
 class ExecuteSingleTaskView(APIView):
+    permission_classes = (permissions.CanExecuteOrdersPermission,)
+
     def post(self, request, *args, **kwargs):
         serializer = serializers.ExecuteSingleTaskSerializer(data=request.data)
 
@@ -308,16 +305,20 @@ class ExecuteSingleTaskView(APIView):
 
 
 class ExecuteMultiTasksView(APIView):
+    permission_classes = (permissions.CanExecuteOrdersPermission,)
+
     def post(self, request, *args, **kwargs):
         serializer = serializers.ExecuteMultiTasksSerializer(data=request.data)
 
         if serializer.is_valid():
             serializer.execute(request)
             return JsonResponseV1(message="任务提交成功，请查看输出")
-        return JsonResponseV1(message=serializer.errors, code='0001', flat=False)
+        return JsonResponseV1(message=serializer.errors, code='0001', flat=True)
 
 
 class ThrottleTaskView(APIView):
+    permission_classes = (permissions.CanExecuteOrdersPermission,)
+
     def post(self, request, *args, **kwargs):
         serializer = serializers.ThrottleTaskSerializer(data=request.data)
 
@@ -329,6 +330,7 @@ class ThrottleTaskView(APIView):
 
 class GetTasksResultView(ListAPIView):
     """SQL工单详情"""
+    permission_classes = (permissions.CanViewOrdersPermission,)
     queryset = models.DbOrdersExecuteTasks.objects.all()
     serializer_class = serializers.GetTasksResultSerializer
     lookup_field = 'id'
@@ -340,6 +342,12 @@ class GetTasksResultView(ListAPIView):
 
 
 class HookSqlOrdersView(APIView):
+    permission_classes = (permissions.anyof(permissions.CanCommitOrdersPermission,
+                                            permissions.CanViewOrdersPermission,
+                                            permissions.CanExecuteOrdersPermission,
+                                            permissions.CanAuditOrdersPermission),
+                          )
+
     def post(self, request, *args, **kwargs):
         serializer = serializers.HookSqlOrdersSerializer(data=request.data)
 
@@ -386,6 +394,7 @@ class ReleaseVersionsGet(APIView):
 
 class ReleaseVersionsList(ListAPIView):
     """获取上线版本号列表，管理上线版本号使用"""
+    permission_classes = (permissions.CanViewVersionPermission,)
     queryset = models.ReleaseVersions.objects.all()
     serializer_class = serializers.ReleaseVersionsListSerializer
     pagination_class = Pagination
@@ -412,6 +421,7 @@ class ReleaseVersionsList(ListAPIView):
 
 class ReleaseVersionsCreate(CreateAPIView):
     """创建版本"""
+    permission_classes = (permissions.CanCreateVersionsPermission,)
     serializer_class = serializers.ReleaseVersionsCreateSerializer
 
     def create(self, request, *args, **kwargs):
@@ -424,6 +434,7 @@ class ReleaseVersionsCreate(CreateAPIView):
 
 class ReleaseVersionsUpdate(UpdateAPIView):
     """更新版本号，该类只更新单条记录"""
+    permission_classes = (permissions.CanUpdateVersionsPermission,)
 
     def put(self, request, *args, **kwargs):
         serializer = serializers.ReleaseVersionsSerializer(
@@ -438,6 +449,7 @@ class ReleaseVersionsUpdate(UpdateAPIView):
 
 class ReleaseVersionsDelete(DestroyAPIView):
     """删除版本"""
+    permission_classes = (permissions.CanDeleteVersionsPermission,)
     queryset = models.ReleaseVersions.objects.all()
     lookup_field = 'id'  # 默认为主键，可不写
 
