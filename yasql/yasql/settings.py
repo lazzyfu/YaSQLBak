@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 import datetime
+import logging.config
 import os
 import sys
 
@@ -209,3 +210,6 @@ CHANNEL_LAYERS = {
 }
 
 ASGI_APPLICATION = "yasql.routing.application"
+
+# logging
+logging.config.fileConfig(os.path.join(BASE_DIR, 'logging.ini'), disable_existing_loggers=False)

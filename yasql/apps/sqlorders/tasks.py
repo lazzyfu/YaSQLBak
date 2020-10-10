@@ -17,7 +17,7 @@ from sqlorders.api.executeExportApi import ExecuteExport
 from sqlorders.api.executeSqlApi import ExecuteSQL
 from sqlorders.libs import remove_sql_comment
 
-logger = get_task_logger('main')
+logger = get_task_logger('celery.logger')
 
 
 def update_dborders_progress_to_processing(id, username):
@@ -220,6 +220,7 @@ def dbms_sync_dbschems():
     query = f"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA"
     # 同步DB信息
     for row in models.DbConfig.objects.all():
+        logger.info(row)
         try:
             config = {
                 'host': row.host,
