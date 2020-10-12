@@ -1,121 +1,123 @@
 <template>
-  <a-card style="margin: 0px" title="SQL工单" :bordered="false">
-    <div class="table-page-search-wrapper">
-      <a-form layout="inline" :form="form" @keyup.enter.native="handleSearch">
-        <a-row :gutter="[8, 8]">
-          <a-col :md="2" :sm="24">
-            <a-form-item>
-              <a-switch
-                style="margin-bottom: 1px"
-                checked-children="我的工单"
-                un-checked-children="我的工单"
-                @change="onMyChange"
-              />
-            </a-form-item>
-          </a-col>
+  <a-card title="SQL工单">
+      <div class="table-page-search-wrapper">
+        <a-form layout="inline" :form="form" @keyup.enter.native="handleSearch">
+          <a-row :gutter="[8, 8]">
+            <a-col :md="2" :sm="24">
+              <a-form-item>
+                <a-switch
+                  style="margin-bottom: 1px"
+                  checked-children="我的工单"
+                  un-checked-children="我的工单"
+                  @change="onMyChange"
+                />
+              </a-form-item>
+            </a-col>
 
-          <a-col :md="3" :sm="24">
-            <a-form-item>
-              <a-select placeholder="环境" v-decorator="decorator['env']">
-                <a-select-option v-for="s in envs" :key="s.id" :value="s.id">{{ s.name }}</a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :md="3" :sm="24">
-            <a-form-item>
-              <a-select placeholder="状态" v-decorator="decorator['progress']">
-                <a-select-option v-for="s in progress" :key="s.key" :value="s.key">{{ s.value }}</a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :md="4" :sm="24">
-            <a-form-item>
-              <a-input placeholder="输入要查询的工单内容" v-decorator="decorator['search']" />
-            </a-form-item>
-          </a-col>
-          <a-col :md="5" :sm="24">
-            <a-form-item>
-              <a-range-picker v-decorator="decorator['created_at']" />
-            </a-form-item>
-          </a-col>
-          <a-col :md="4" :sm="24">
-            <span class="table-page-search-submitButtons">
-              <a-button type="primary" @click="handleSearch">查询</a-button>
-              <a-button @click="resetForm" style="margin-left: 8px">重置</a-button>
-            </span>
-          </a-col>
-        </a-row>
-      </a-form>
-    </div>
-    <a-table
-      :columns="table.columns"
-      :rowKey="(record) => record.id"
-      :dataSource="table.data"
-      :pagination="pagination"
-      :loading="loading"
-      @change="handleTableChange"
-      size="middle"
-      :scroll="{ x: 1100 }"
-    >
-      <span slot="progress" slot-scope="text">
-        <div v-for="tag of progress" :key="tag.value">
-          <el-button size="small" round plain :type="tag.color" v-if="tag.value === text">{{ text }}</el-button>
-        </div>
-      </span>
-      <span slot="applicant" slot-scope="text, record">
-        <el-tooltip placement="right-end" effect="light">
-          <div slot="content">
-            <span v-if="record.is_hide === 'ON'">
-              仅有查看权限且仅工单的提交人、审核人、复核人和DBA可以查看工单内容
-            </span>
-            <span v-else> 有查看权限的用户可以查看当前工单内容 </span>
+            <a-col :md="3" :sm="24">
+              <a-form-item>
+                <a-select placeholder="环境" v-decorator="decorator['env']">
+                  <a-select-option v-for="s in envs" :key="s.id" :value="s.id">{{ s.name }}</a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :md="3" :sm="24">
+              <a-form-item>
+                <a-select placeholder="状态" v-decorator="decorator['progress']">
+                  <a-select-option v-for="s in progress" :key="s.key" :value="s.key">{{ s.value }}</a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :md="4" :sm="24">
+              <a-form-item>
+                <a-input placeholder="输入要查询的工单内容" v-decorator="decorator['search']" />
+              </a-form-item>
+            </a-col>
+            <a-col :md="5" :sm="24">
+              <a-form-item>
+                <a-range-picker v-decorator="decorator['created_at']" />
+              </a-form-item>
+            </a-col>
+            <a-col :md="4" :sm="24">
+              <span class="table-page-search-submitButtons">
+                <a-button type="primary" @click="handleSearch">查询</a-button>
+                <a-button @click="resetForm" style="margin-left: 8px">重置</a-button>
+              </span>
+            </a-col>
+          </a-row>
+        </a-form>
+      </div>
+      <a-table
+        :columns="table.columns"
+        :rowKey="(record) => record.id"
+        :dataSource="table.data"
+        :pagination="pagination"
+        :loading="loading"
+        @change="handleTableChange"
+        size="middle"
+        :scroll="{ x: 1100 }"
+      >
+        <span slot="progress" slot-scope="text">
+          <div v-for="tag of progress" :key="tag.value">
+            <el-button size="small" round plain :type="tag.color" v-if="tag.value === text">{{ text }}</el-button>
           </div>
-          <i class="el-icon-lock table-msg" v-if="record.is_hide === 'ON'" style="color: #52c41a" />
-          <i class="el-icon-lock table-msg" v-else />
-        </el-tooltip>
-        {{ text }}
-      </span>
-      <span slot="department" slot-scope="text">
-        <div v-for="dept of text.split(',')" :key="dept">
-          <span>{{ dept }}</span>
-        </div>
-      </span>
-      <span slot="escape_title" slot-scope="text, record">
-        <router-link :to="{ name: 'view.sqlorders.detail', params: { order_id: record.order_id } }">{{
-          text
-        }}</router-link>
-        <br />
-        At: {{ record.created_at }}
-      </span>
-      <span slot="host" slot-scope="text, record">
-        {{ record.host }}:{{ record.port }}
-        <br />
-        {{ record.database }}
-      </span>
-      <template slot="version" slot-scope="text">
-        <span v-if="text">
-          <router-link :to="{ name: 'view.sqlorders.version.view', params: { version: text } }">{{ text }}</router-link>
         </span>
-        <span v-else>-</span>
-      </template>
-      <span slot="auditor" slot-scope="text">
-        <div v-for="tag of JSON.parse(text)" :key="tag.user + tag.status">
-          <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
-            <span v-if="tag.display_name">{{ tag.display_name }}</span>
-            <span v-else>{{ tag.user }}</span>
+        <span slot="applicant" slot-scope="text, record">
+          <el-tooltip placement="right-end" effect="light">
+            <div slot="content">
+              <span v-if="record.is_hide === 'ON'">
+                仅有查看权限且仅工单的提交人、审核人、复核人和DBA可以查看工单内容
+              </span>
+              <span v-else> 有查看权限的用户可以查看当前工单内容 </span>
+            </div>
+            <i class="el-icon-lock table-msg" v-if="record.is_hide === 'ON'" style="color: #52c41a" />
+            <i class="el-icon-lock table-msg" v-else />
+          </el-tooltip>
+          {{ text }}
+        </span>
+        <span slot="department" slot-scope="text">
+          <div v-for="dept of text.split(',')" :key="dept">
+            <span>{{ dept }}</span>
+          </div>
+        </span>
+        <span slot="escape_title" slot-scope="text, record">
+          <router-link :to="{ name: 'view.sqlorders.detail', params: { order_id: record.order_id } }">{{
+            text
+          }}</router-link>
+          <br />
+          At: {{ record.created_at }}
+        </span>
+        <span slot="host" slot-scope="text, record">
+          {{ record.host }}:{{ record.port }}
+          <br />
+          {{ record.database }}
+        </span>
+        <template slot="version" slot-scope="text">
+          <span v-if="text">
+            <router-link :to="{ name: 'view.sqlorders.version.view', params: { version: text } }">{{
+              text
+            }}</router-link>
           </span>
-        </div>
-      </span>
+          <span v-else>-</span>
+        </template>
+        <span slot="auditor" slot-scope="text">
+          <div v-for="tag of JSON.parse(text)" :key="tag.user + tag.status">
+            <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
+              <span v-if="tag.display_name">{{ tag.display_name }}</span>
+              <span v-else>{{ tag.user }}</span>
+            </span>
+          </div>
+        </span>
 
-      <span slot="reviewer" slot-scope="text">
-        <div v-for="tag of JSON.parse(text)" :key="`reviewer_` + tag.user + tag.status">
-          <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
-            <span v-if="tag.display_name">{{ tag.display_name }}</span>
-            <span v-else>{{ tag.user }}</span>
-          </span>
-        </div>
-      </span>
-    </a-table>
+        <span slot="reviewer" slot-scope="text">
+          <div v-for="tag of JSON.parse(text)" :key="`reviewer_` + tag.user + tag.status">
+            <span :style="{ color: tag.status === 0 ? '#f56c6c' : '#67c23a' }">
+              <span v-if="tag.display_name">{{ tag.display_name }}</span>
+              <span v-else>{{ tag.user }}</span>
+            </span>
+          </div>
+        </span>
+      </a-table>
   </a-card>
 </template>
 

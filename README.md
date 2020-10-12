@@ -79,7 +79,7 @@ chown -R www. /venvyasql/
 ```
 
 ### 编辑Nginx配置文件
-`vim /etc/nginx/conf.d/yasql.conf`
+vim /etc/nginx/conf.d/yasql.conf
 ```editorconfig
 server {
     listen      80;

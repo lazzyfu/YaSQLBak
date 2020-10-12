@@ -17,7 +17,7 @@ import sys
 from kombu import Queue
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-from config import REDIS, DB
+from config import REDIS, DB, LDAP_SUPPORT
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -210,6 +210,20 @@ CHANNEL_LAYERS = {
 }
 
 ASGI_APPLICATION = "yasql.routing.application"
+
+# 启用LDAP支持
+if LDAP_SUPPORT['enable'] is True:
+    AUTHENTICATION_BACKENDS = [
+        'django_auth_ldap.backend.LDAPBackend',
+        'django.contrib.auth.backends.ModelBackend',
+    ]
+
+    AUTH_LDAP_SERVER_URI = LDAP_SUPPORT['config']['AUTH_LDAP_SERVER_URI']
+    AUTH_LDAP_ALWAYS_UPDATE_USER = LDAP_SUPPORT['config']['AUTH_LDAP_ALWAYS_UPDATE_USER']
+    AUTH_LDAP_BIND_DN = LDAP_SUPPORT['config']['AUTH_LDAP_BIND_DN']
+    AUTH_LDAP_BIND_PASSWORD = LDAP_SUPPORT['config']['AUTH_LDAP_BIND_PASSWORD']
+    AUTH_LDAP_USER_SEARCH = LDAP_SUPPORT['config']['AUTH_LDAP_USER_SEARCH']
+    AUTH_LDAP_USER_ATTR_MAP = LDAP_SUPPORT['config']['AUTH_LDAP_USER_ATTR_MAP']
 
 # logging
 logging.config.fileConfig(os.path.join(BASE_DIR, 'logging.ini'), disable_existing_loggers=False)

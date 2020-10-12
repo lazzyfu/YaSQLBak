@@ -183,7 +183,7 @@
             </el-form-item>
 
             <el-form-item style="text-align: left">
-              <el-button type="primary" :disabled="pushing" @click="submitForm('ruleForm')">立即创建</el-button>
+              <el-button type="primary" :loading="isDisabledCommit" @click="submitForm('ruleForm')">提交</el-button>
               <el-button @click="resetForm('ruleForm')">重置</el-button>
             </el-form-item>
           </el-form>
@@ -302,7 +302,7 @@ export default {
       }
     }
     return {
-      pushing: false,
+      isDisabledCommit: false,
       visibleAuditResult: false,
       tidbVisible: false,
       cardTitle: '',
@@ -540,31 +540,40 @@ export default {
     },
     // 提交工单
     submitForm(formName) {
-      this.pushing = true
-      this.$refs[formName].validate((valid) => {
-        if (valid) {
-          const sqlContent = this.codemirror.getValue()
-          if (!sqlContent) {
-            this.$message.error('请输入要审核的SQL内容')
+      this.isDisabledCommit = true
+      setTimeout(() => {
+        this.$refs[formName].validate((valid) => {
+          if (valid) {
+            // 简单判断输入是否为空
+            const sqlContent = this.codemirror.getValue()
+            if (!sqlContent) {
+              this.$message.error('请输入要审核的SQL内容')
+              this.isDisabledCommit = false
+              return false
+            }
+            const commitData = {
+              sql_type: this.sqltype,
+              contents: sqlContent,
+              ...this.ruleForm,
+            }
+            commitSqlOrders(commitData)
+              .then((response) => {
+                if (response.code === '0000') {
+                  this.$router.push('/sqlorders/list')
+                } else {
+                  this.isDisabledCommit = false
+                  this.$message.error(response.message)
+                }
+              })
+              .catch(() => {
+                this.isDisabledCommit = false
+              })
+          } else {
+            this.isDisabledCommit = false
             return false
           }
-          const commitData = {
-            sql_type: this.sqltype,
-            contents: sqlContent,
-            ...this.ruleForm,
-          }
-          commitSqlOrders(commitData).then((response) => {
-            if (response.code === '0000') {
-              this.$router.push('/sqlorders/list')
-            } else {
-              this.$message.error(response.message)
-            }
-          })
-        } else {
-          return false
-        }
-      })
-      this.pushing = false
+        })
+      }, 500)
     },
     resetForm(formName) {
       this.$refs[formName].resetFields()
