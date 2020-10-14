@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 # edit by fuzongfei
+import base64
 import csv
 import os
 import subprocess
@@ -16,7 +17,7 @@ from django.utils.crypto import get_random_string
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
-from sqlorders import models
+from sqlorders import models, tasks
 
 channel_layer = get_channel_layer()
 logger = get_task_logger('noahCelery')
@@ -218,13 +219,14 @@ class ExecuteExport(object):
                 os.remove(f)
 
         # 发送消息
-        # tasks.sql_order_msg_push.delay(pk=models.DbOrdersExecuteTasks.objects.get(pk=self.config['id']).order_id,
-        #                                op='_export',
-        #                                username=self.config['username'],
-        #                                export_file_name=base64.b64encode(obj.file_name.encode()).decode(),
-        #                                export_file_encryption_key=obj.encryption_key,
-        #                                export_sql=self.sql
-        #                                )
+        tasks.msg_notice.delay(
+            pk=models.DbOrdersExecuteTasks.objects.get(pk=self.config['id']).order_id,
+            op='_export',
+            username=self.config['username'],
+            export_file_name=base64.b64encode(obj.file_name.encode()).decode(),
+            export_file_encryption_key=obj.encryption_key,
+            export_sql=self.sql
+        )
 
     def run(self, sql):
         try:

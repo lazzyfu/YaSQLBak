@@ -16,6 +16,7 @@ from sqlorders import models
 from sqlorders.api.executeExportApi import ExecuteExport
 from sqlorders.api.executeSqlApi import ExecuteSQL
 from sqlorders.libs import remove_sql_comment
+from sqlorders.notice import MsgNotice
 
 logger = get_task_logger('celery.logger')
 
@@ -46,8 +47,12 @@ def update_dborders_progress_to_finish(task_id, username=None):
                 data.progress = 4
                 data.updated_at = timezone.now()
                 data.save()
-            # # 发送消息
-            # sql_order_msg_push.delay(pk=order_id, op='_feedback', username=username)
+            # 推送消息
+            msg_notice.delay(
+                pk=order_id,
+                op='_feedback',
+                username=username
+            )
 
 
 def save_rbsql_as_file(rollbacksql):
@@ -245,3 +250,8 @@ def dbms_sync_dbschems():
             logger.error(err)
             continue
     logger.info(f'dbms_sync_dbschems任务结束...')
+
+
+@shared_task(queue='dbtask')
+def msg_notice(**kwargs):
+    MsgNotice(**kwargs).run()

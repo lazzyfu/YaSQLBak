@@ -224,6 +224,16 @@ class SqlOrdersCommitSerializer(serializers.ModelSerializer):
 
         return super(SqlOrdersCommitSerializer, self).validate(attrs)
 
+    def save(self, **kwargs):
+        super(SqlOrdersCommitSerializer, self).save()
+
+        # 推送消息
+        tasks.msg_notice.delay(
+            pk=self.instance.pk,
+            op='_commit',
+            username=self.context['request'].user.username
+        )
+
 
 class SqlOrdersListSerializer(serializers.ModelSerializer):
     applicant = serializers.SerializerMethodField()
@@ -333,6 +343,12 @@ class OpSqlOrderSerializer(serializers.Serializer):
 
     def save(self, **kwargs):
         super(OpSqlOrderSerializer, self).save()
+        # 推送消息
+        tasks.msg_notice.delay(
+            pk=self.instance.pk,
+            op=self.context['handler'],
+            username=self.context['request'].user.username
+        )
 
     def _approve(self, request, attr):
         # 状态不为：待审核，raise error
@@ -521,9 +537,13 @@ class ExecuteSingleTaskSerializer(serializers.Serializer):
         obj.save()
         # 执行
         tasks.async_execute_single.delay(id=id, username=request.user.username)
-        # 发送消息
-        # sql_order_msg_push.delay(pk=obj.order_id, op='_feedback',
-        #                          username=request.user.username)
+
+        # 推送消息
+        tasks.msg_notice.delay(
+            pk=obj.order_id,
+            op='_feedback',
+            username=request.user.username
+        )
 
 
 class ExecuteMultiTasksSerializer(serializers.Serializer):
@@ -554,9 +574,13 @@ class ExecuteMultiTasksSerializer(serializers.Serializer):
         tasks.update_dborders_progress_to_processing(id, request.user.username)
         # 执行
         tasks.async_execute_multi.delay(task_id=task_id, username=request.user.username)
-        # 发送消息
-        # sql_order_msg_push.delay(pk=id, op='_feedback',
-        #                          username=request.user.username)
+
+        # 推送消息
+        tasks.msg_notice.delay(
+            pk=id,
+            op='_feedback',
+            username=request.user.username
+        )
 
 
 class ThrottleTaskSerializer(serializers.Serializer):

@@ -29,9 +29,9 @@ const errorHandler = error => {
     if (error.response.status === 404) {
       redirect({ name: '404' })
     }
-    if (error.response.status === 500) {
-      redirect({ name: '500' })
-    }
+    // if (error.response.status === 500) {
+    //   redirect({ name: '500' })
+    // }
     if (error.response.status === 401) {
       notification.error({
         message: 'Unauthorized',

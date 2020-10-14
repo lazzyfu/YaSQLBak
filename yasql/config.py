@@ -70,3 +70,29 @@ INCEPTION = {
     'host': '127.0.0.1',
     'port': 4000
 }
+
+# 配置接收工单消息
+# 通知消息里面的url地址
+NOTICE_URL = 'http://localhost:8001'
+
+# 配置支持的通道
+NOTICE = {
+    'DINGDING': {
+        'enabled': False,  # 是否启用消息通知
+        'webhook': 'https://oapi.dingtalk.com/robot/send?xxx',  # 更换为自己的webhook地址
+        'key': 'DBNotice'  # Webhook安全设置的自定义的关键字
+    },
+    # 此处应该是您的企业邮箱配置
+    'MAIL': {
+        'enabled': True,  # 是否启用消息通知
+        'email_host': 'smtp.163.com',
+        'email_port': '465',
+        'email_host_user': 'xxx@163.com',
+        'email_host_password': 'xxx',
+        'email_use_ssl': True,
+    },
+    'WEIXIN': {
+        'enabled': True,  # 是否启用消息通知
+        'webhook': 'https://qyapi.weixin.qq.com/cgi-bin/webhook/xxx'  # 更换为自己的webhook地址
+    }
+}

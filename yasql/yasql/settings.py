@@ -17,7 +17,7 @@ import sys
 from kombu import Queue
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-from config import REDIS, DB, LDAP_SUPPORT
+from config import REDIS, DB, LDAP_SUPPORT, NOTICE
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -224,6 +224,15 @@ if LDAP_SUPPORT['enable'] is True:
     AUTH_LDAP_BIND_PASSWORD = LDAP_SUPPORT['config']['AUTH_LDAP_BIND_PASSWORD']
     AUTH_LDAP_USER_SEARCH = LDAP_SUPPORT['config']['AUTH_LDAP_USER_SEARCH']
     AUTH_LDAP_USER_ATTR_MAP = LDAP_SUPPORT['config']['AUTH_LDAP_USER_ATTR_MAP']
+
+# 邮箱配置
+if NOTICE['MAIL']['enabled'] is True:
+    EMAIL_HOST = NOTICE['MAIL']['email_host']
+    EMAIL_PORT = NOTICE['MAIL']['email_port']
+    EMAIL_HOST_USER = NOTICE['MAIL']['email_host_user']
+    EMAIL_HOST_PASSWORD = NOTICE['MAIL']['email_host_password']
+    EMAIL_FROM = NOTICE['MAIL']['email_host_user']
+    EMAIL_USE_SSL = NOTICE['MAIL']['email_use_ssl']
 
 # logging
 logging.config.fileConfig(os.path.join(BASE_DIR, 'logging.ini'), disable_existing_loggers=False)
